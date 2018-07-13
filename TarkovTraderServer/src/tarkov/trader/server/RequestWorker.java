@@ -85,48 +85,6 @@ public class RequestWorker implements Runnable {
     }
     
     
-    /*
-    private void decipherForm(LinkedHashMap form)
-    {
-        // This method determines the type of form sent from the client and processes information accordingly
-        
-        if (form.containsKey("newaccount"))
-        {
-            NewAccountForm newAccountInfo = (NewAccountForm)form.get("newaccount");
-            if (verifyClientIP())
-                 processNewAccount(newAccountInfo);
-            else
-            {
-                // User has more than 1 account associated with their IP address
-                // TODO: SET FLAG FOR POTENTIAL FRAUD ACCOUNT
-                communicator.sendAlert("Failed to verify user info. Please contact: tarkovtrader@gmail.com");
-            }
-        }
-            
-        
-        if (form.containsKey("login"))
-        {
-            LoginForm packedLogin = (LoginForm)form.get("login");
-            if (packedLogin == null)
-                System.out.println("packedlogin null");
-            System.out.println("username: " + packedLogin.getUsername());
-            if (loginAuthenticated(packedLogin))
-            {
-                System.out.println("authenticated!");
-                packedLogin.setAuthenticationState(true);
-                LinkedHashMap<String, Object> loginForm = new LinkedHashMap();
-                loginForm.put("login", packedLogin);
-                if (sendForm(loginForm)) 
-                {
-                    TarkovTraderServer.authenticatedUsers.put(packedLogin.getUsername(), clientIp);
-                    System.out.println("authenticated login sent back");
-                }
-            }
-        }       
-    }
-    */
-    
-    
     private boolean verifyForm(Form form)
     {
         if (form.getType() == null)
