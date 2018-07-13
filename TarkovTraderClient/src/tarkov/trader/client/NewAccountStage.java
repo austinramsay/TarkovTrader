@@ -20,6 +20,7 @@ import javafx.scene.image.*;
 import javafx.scene.layout.*;
 import javafx.stage.*;
 import javafx.stage.FileChooser.ExtensionFilter;
+import tarkov.trader.objects.Form;
 
 
 public class NewAccountStage 
@@ -146,8 +147,10 @@ public class NewAccountStage
         border.setCenter(grid);
         border.setBottom(lowerDisplay);
         
+        
         scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
+        newAccountStage.getIcons().add(Resources.icon);
         newAccountStage.setScene(scene);
         newAccountStage.setResizable(false);
         newAccountStage.show();
@@ -206,7 +209,7 @@ public class NewAccountStage
         
         if (username.equals("") || !isBetween(username.length(), 2, 15))
             return false;
-        if (password.equals("") || !isBetween(password.length(), 2, 15))
+        if (password.equals("") || !isBetween(password.length(), 5, 17))
             return false;
         if (firstName.equals("") || !isBetween(firstName.length(), 2, 15))
             return false;
@@ -227,15 +230,13 @@ public class NewAccountStage
     private boolean isBetween(int value, int min, int max)
     {
         // Note: database will not take above 16 chars
-        return ((value > min) && (value < max));
+        return ((value > min) && (value <= max));
     }
     
     
     private void submitNewAccount(NewAccountForm newAccountInfo)
-    {
-        // Form has been verified, put into map to be sent to server
-        LinkedHashMap<String, Object> form = new LinkedHashMap();
-        form.put("newaccount", newAccountInfo);
+    {   
+        Form form = new NewAccountForm(username, password, firstName, lastName, ign);
         
         if (worker.sendForm(form))
             this.close();

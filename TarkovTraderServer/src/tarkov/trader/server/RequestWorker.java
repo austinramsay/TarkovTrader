@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import tarkov.trader.objects.LoginForm;
+import tarkov.trader.objects.Form;
 
 
 public class RequestWorker implements Runnable {
@@ -23,7 +24,7 @@ public class RequestWorker implements Runnable {
     private String clientIp;
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
-    private LinkedHashMap<String, Object> form;
+    private Form form;
     
     
     public RequestWorker(Socket client, Socket clientComm)
@@ -51,12 +52,14 @@ public class RequestWorker implements Runnable {
         catch (IOException e)
         {
             System.out.println("Client " + clientIp + " has disconnected.");
+            if (TarkovTraderServer.authenticatedUsers.containsKey(clientIp))
+                TarkovTraderServer.authenticatedUsers.remove(clientIp);
             // TODO: HANDLE A CLOSED CONNECTION
         }
         catch (ClassNotFoundException e)
         {
-            System.out.println("Request Worker: Failed to create form map. " + e.getMessage());
-            communicator.sendAlert("Request Worker: Failed to create form map.");
+            System.out.println("Request Worker: Failed to create form. " + e.getMessage());
+            communicator.sendAlert("Request Worker: Failed to create form.");
         }
     }
     
@@ -72,13 +75,17 @@ public class RequestWorker implements Runnable {
     {
         // While true loop in run() method
         
-        while((form = (LinkedHashMap)inputStream.readObject()) != null)
+        while((form = (Form)inputStream.readObject()) != null)
         {
-            decipherForm(form);
+            if(verifyForm(form))
+                unpack(form);
+            else
+                communicator.sendAlert("Server received an empty request.");
         }
     }
     
     
+    /*
     private void decipherForm(LinkedHashMap form)
     {
         // This method determines the type of form sent from the client and processes information accordingly
@@ -115,24 +122,70 @@ public class RequestWorker implements Runnable {
                     System.out.println("authenticated login sent back");
                 }
             }
+        }       
+    }
+    */
+    
+    
+    private boolean verifyForm(Form form)
+    {
+        if (form.getType() == null)
+            return false;
+        else
+            return true;
+    }
+    
+    
+    private void unpack(Form form)
+    {
+        String type = form.getType();
+        
+        switch (type)
+        {
+            case "newaccount":
+                NewAccountForm newAccountInfo = (NewAccountForm)form;
+                if (verifyClientAccountInfo(newAccountInfo))
+                     processNewAccount(newAccountInfo);
+                break;
+                
+            case "login":
+                LoginForm loginform = (LoginForm)form;
+                
+                if (loginAuthenticated(loginform))
+                {
+                    loginform.setAuthenticationState(true);
+                    
+                    if (sendForm(loginform)) 
+                    {
+                        TarkovTraderServer.authenticatedUsers.put(loginform.getUsername(), clientIp);
+                        System.out.println("Successful user authentication for: " + clientIp);
+                    }
+                }
+                else
+                {
+                    System.out.println("Failed user authentication for: " + clientIp);
+                    communicator.sendAlert("Failed account authentication. Check credentials.");
+                }
+                break;
         }
     }
     
     
     private void processNewAccount(NewAccountForm newAccountInfo)
     {
-        LinkedHashMap newAccountMap = new LinkedHashMap();
-        newAccountMap.put("username", newAccountInfo.getUsername());
-        newAccountMap.put("password", newAccountInfo.getPassword());
-        newAccountMap.put("firstname", newAccountInfo.getFirst());
-        newAccountMap.put("lastname", newAccountInfo.getLast());
-        newAccountMap.put("ign", newAccountInfo.getIgn());
-        newAccountMap.put("ipaddr", clientIp);
-        dbWorker.insertAccountInfo(newAccountMap);
+        String values = 
+                "'" + newAccountInfo.getUsername() + "', " +
+                "'" + newAccountInfo.getPassword() + "', " +
+                "'" + newAccountInfo.getFirst() + "', " +
+                "'" + newAccountInfo.getLast() + "', " +
+                "'" + newAccountInfo.getIgn() + "', " +
+                "'" + clientIp + "'";
+        
+        dbWorker.insertAccountInfo(values);
     }
     
     
-    public boolean sendForm(Map<String, Object> form)
+    public boolean sendForm(Form form)
     {
         try
         {
@@ -141,38 +194,87 @@ public class RequestWorker implements Runnable {
         }
         catch (IOException e)
         {
-            communicator.sendAlert("Server failed to return login authentication.");
+            communicator.sendAlert("Server failed to return processed request.");
             return false;
         }
     }
     
     
-    private boolean verifyClientIP()
+    private boolean verifyClientAccountInfo(NewAccountForm form)
     {
         // Prevents users from creating multiple accounts (scam accounts, etc.)
+       boolean ipVerified = false;
+       boolean usernameVerified = false;
+       boolean ignVerified = false;
+       
        try 
        {
-            String command = "SELECT CASE WHEN EXISTS (SELECT ipaddr FROM accounts WHERE ipaddr = \"" + clientIp + "\") THEN CAST(1 AS UNSIGNED) ELSE CAST(0 AS UNSIGNED) END;";
-            ResultSet checkIp = dbWorker.query(command);
+            String ipCheckCommand = existsCheckStatementFor("accounts", "ipaddr", clientIp);
+            ResultSet checkIp = dbWorker.query(ipCheckCommand);
             checkIp.first(); // Move cursor to the first row
-            return (checkIp.getInt(1) != 1); // Get value from first column (only one column for this query)
+            ipVerified = (checkIp.getInt(1) != 1); // Get value from first column (only one column for this query)
+            
+            String nameCheckCommand = existsCheckStatementFor("accounts", "username", form.getUsername());
+            ResultSet checkName = dbWorker.query(nameCheckCommand);
+            checkName.first();
+            usernameVerified = (checkName.getInt(1) != 1);
+            
+            String ignCheckCommand = existsCheckStatementFor("accounts", "ign", form.getIgn());
+            ResultSet checkIgn = dbWorker.query(ignCheckCommand);
+            checkIgn.first();
+            ignVerified = (checkIgn.getInt(1) != 1);
+            
+            boolean notified = false;
+            
+            if(!notified && !ipVerified)
+            {
+                // User has more than 1 account associated with their IP address
+                // TODO: SET FLAG FOR POTENTIAL FRAUD ACCOUNT
+                communicator.sendAlert("Failed to verify user info. Please contact: tarkovtrader@gmail.com");
+                System.out.println("Client " + clientIp + " attempted to register multiple accounts.");
+                notified = true;
+                return false;
+            }
+            
+            if(!notified && !usernameVerified)
+            {
+                communicator.sendAlert("Username is already in use. Enter a different username.");
+                notified = true;
+                return false;
+            }
+            
+            if(!notified && !ignVerified)
+            {
+                communicator.sendAlert("An account is already associated with this in-game name. Contact tarkovtrader@gmail.com if you do not already have an account.");
+                notified = true;
+                return false;
+            }
+            
+            return true;
        }
        catch (SQLException e)
        {
            System.out.println("Request Worker: SQL Exception for " + clientIp + ". Error:" + e.getMessage());
            return false;
-       }
+       }   
     }
     
-    private boolean loginAuthenticated(LoginForm packedLogin)
+    
+    private String existsCheckStatementFor(String table, String column, String input)
+    {
+        String command = "SELECT CASE WHEN EXISTS (SELECT " + column + " FROM " + table + " WHERE " + column + " = \"" + input + "\") THEN CAST(1 AS UNSIGNED) ELSE CAST(0 AS UNSIGNED) END;";
+        return command;
+    }
+    
+    
+    private boolean loginAuthenticated(LoginForm loginform)
     {
         try
         {
-            String command = "SELECT password FROM accounts WHERE username=\"" + packedLogin.getUsername() + "\""; 
-            System.out.println("the string: " + command);
+            String command = "SELECT password FROM accounts WHERE username=\"" + loginform.getUsername() + "\""; 
             ResultSet authResult = dbWorker.query(command);
             authResult.first();
-            return (authResult.getString(1).equals(packedLogin.getPassword()));
+            return (authResult.getString(1).equals(loginform.getPassword()));
         }
         catch (SQLException e)
         {

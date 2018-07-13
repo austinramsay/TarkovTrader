@@ -29,6 +29,7 @@ public class TarkovTrader extends Application {
     
     // Object declarations
     private RequestWorker worker;
+    public LoginPrompt mainLogin;
     private Thread workerThread;
     
     // JavaFX variable declarations
@@ -82,7 +83,7 @@ public class TarkovTrader extends Application {
     
     private void displayLogin()
     {
-        LoginPrompt mainLogin = new LoginPrompt(this, worker);
+        mainLogin = new LoginPrompt(this, worker);
         mainLogin.display();
     }
     
@@ -214,7 +215,7 @@ public class TarkovTrader extends Application {
     
     private void startWorker()
     {
-        worker = new RequestWorker();
+        worker = new RequestWorker(this);
         workerThread = new Thread(worker);
         workerThread.start();
     }

@@ -6,9 +6,7 @@ package tarkov.trader.objects;
  * @author austin
  */
 
-import java.io.Serializable;
-        
-public class LoginForm implements Serializable {
+public class LoginForm extends Form {
     
     private String username;
     private String password;
@@ -16,6 +14,8 @@ public class LoginForm implements Serializable {
     
     public LoginForm(String username, String password)
     {
+        this.type = "login";
+        this.flags = null;
         this.username = username;
         this.password = password;
         this.authenticated = false;

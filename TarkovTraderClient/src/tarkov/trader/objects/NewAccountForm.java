@@ -8,7 +8,7 @@ package tarkov.trader.objects;
 
 import java.io.Serializable;
 
-public class NewAccountForm implements Serializable {
+public class NewAccountForm extends Form {
     
     private String username;
     private String password;
@@ -19,6 +19,8 @@ public class NewAccountForm implements Serializable {
     
     public NewAccountForm(String user, String pass, String first, String last, String ign)
     {
+        this.type = "newaccount";
+        this.flags = null;
         this.username = user;
         this.password = pass;
         this.firstName = first;

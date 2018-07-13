@@ -59,6 +59,42 @@ public class DatabaseWorker
     }
     
     
+    public void insertAccountInfo(String values)
+    {        
+        try
+        {
+            Connection dbConnection = getDBconnection();
+            PreparedStatement statement = dbConnection.prepareStatement("INSERT INTO accounts (username, password, firstname, lastname, ign, ipaddr) VALUES (" + values + ");");
+            statement.executeUpdate();
+            statement.close();
+            dbConnection.close();
+            System.out.println("DBWorker: New account success from: " + clientIp);
+            communicator.sendAlert("Account successfully created.");
+        }
+        catch (SQLException e)
+        {
+            String error = "DBWorker: New account insert failed. Error: " + e.getMessage();
+            System.out.println(error);
+            communicator.sendAlert(error);
+        }
+    }
+    
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* DEPRECATED
+
     public void insertAccountInfo(LinkedHashMap<String, String> account)
     {
         Iterator<Map.Entry<String, String>> iterator = account.entrySet().iterator();
@@ -103,7 +139,4 @@ public class DatabaseWorker
             System.out.println(error);
             communicator.sendAlert(error);
         }
-    }
-    
-    
-}
+    }*/
