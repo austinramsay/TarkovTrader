@@ -21,6 +21,7 @@ public class LoginPrompt {
     private TarkovTrader tarkovtrader;
     private RequestWorker worker;
     
+    public  static volatile boolean acknowledged;
     public Stage loginStage;
     public TextField usernameInput;
     public PasswordField passwordInput;
@@ -40,7 +41,7 @@ public class LoginPrompt {
     
     public void display() 
     {
-        
+        LoginPrompt.acknowledged = false;
         loginStage = new Stage();
         
         loginStage.setTitle("Tarkov Trader Login");
@@ -114,7 +115,7 @@ public class LoginPrompt {
     {
         tarkovtrader.setUsername(getUsername());
         loginStage.close();
-            
+        
         tarkovtrader.drawMainUI();
     }
     
@@ -133,11 +134,36 @@ public class LoginPrompt {
 
         if (worker.sendForm(loginRequest))
         {
+            while(awaitingAuthentication())
+            {
+                ; // Awaiting authentication
+            }
+            
+            // Authentication succeeds -> draw the main user interface
             if (TarkovTrader.authenticated)
                 startMainUI();
+            
+            // Authentication failed
+            // Error message sent from server-side and has been viewed by client
+            // Reset the login fields
+            clearFields();
+            LoginPrompt.acknowledged = false;
         }
     }
     
+    
+    private boolean awaitingAuthentication()
+    {
+        //return !TarkovTrader.authenticated;
+        return !LoginPrompt.acknowledged;
+    }
+    
+    
+    private void clearFields()
+    {
+        usernameInput.setText(null);
+        passwordInput.setText(null);
+    }
     
     private void close()
     {

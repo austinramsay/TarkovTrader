@@ -130,6 +130,7 @@ public class RequestWorker implements Runnable
             case "login":
                 LoginForm unpackedLogin = (LoginForm)processedRequest;
                 TarkovTrader.authenticated = unpackedLogin.isAuthenticated();
+                LoginPrompt.acknowledged = true;
         }
     }
     

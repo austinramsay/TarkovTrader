@@ -121,25 +121,14 @@ public class RequestWorker implements Runnable {
                 }
                 else
                 {
-                    System.out.println("Failed user authentication for: " + clientIp);
-                    communicator.sendAlert("Failed account authentication. Check credentials.");
+                    if (sendForm(loginform))
+                    {
+                        System.out.println("Failed user authentication for: " + clientIp);
+                        communicator.sendAlert("Failed account authentication. Check credentials.");
+                    }
                 }
                 break;
         }
-    }
-    
-    
-    private void processNewAccount(NewAccountForm newAccountInfo)
-    {
-        String values = 
-                "'" + newAccountInfo.getUsername() + "', " +
-                "'" + newAccountInfo.getPassword() + "', " +
-                "'" + newAccountInfo.getFirst() + "', " +
-                "'" + newAccountInfo.getLast() + "', " +
-                "'" + newAccountInfo.getIgn() + "', " +
-                "'" + clientIp + "'";
-        
-        dbWorker.insertAccountInfo(values);
     }
     
     
@@ -155,6 +144,20 @@ public class RequestWorker implements Runnable {
             communicator.sendAlert("Server failed to return processed request.");
             return false;
         }
+    }
+    
+        
+    private void processNewAccount(NewAccountForm newAccountInfo)
+    {
+        String values = 
+                "'" + newAccountInfo.getUsername() + "', " +
+                "'" + newAccountInfo.getPassword() + "', " +
+                "'" + newAccountInfo.getFirst() + "', " +
+                "'" + newAccountInfo.getLast() + "', " +
+                "'" + newAccountInfo.getIgn() + "', " +
+                "'" + clientIp + "'";
+        
+        dbWorker.insertAccountInfo(values);
     }
     
     

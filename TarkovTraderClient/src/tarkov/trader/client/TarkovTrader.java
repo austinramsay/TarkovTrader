@@ -56,7 +56,7 @@ public class TarkovTrader extends Application {
     // Logical variable declarations
     private String username;
     public static boolean connected;
-    public static boolean authenticated;
+    public static volatile boolean authenticated;
     // End logical variable declarations
     
     
