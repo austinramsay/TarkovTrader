@@ -1,8 +1,6 @@
 package tarkov.trader.client;
 
-import java.util.LinkedHashMap;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.*;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -11,6 +9,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.*;
 import tarkov.trader.objects.LoginForm;
+import tarkov.trader.objects.Form;
 
 /**
  *
@@ -113,10 +112,10 @@ public class LoginPrompt {
     
     public void startMainUI()
     {
-            tarkovtrader.setUsername(getUsername());
-            loginStage.close();
+        tarkovtrader.setUsername(getUsername());
+        loginStage.close();
             
-            tarkovtrader.drawMainUI();
+        tarkovtrader.drawMainUI();
     }
     
     
@@ -130,24 +129,10 @@ public class LoginPrompt {
     
     private void attemptAuthentication()
     {
-        LoginForm packedLogin = new LoginForm(getUsername(), getPassword());
-        LinkedHashMap<String, Object> loginMap = new LinkedHashMap();
-        loginMap.put("login", packedLogin);
-        
-        if (worker.sendForm(loginMap))
+        Form loginRequest = new LoginForm(getUsername(), getPassword());
+
+        if (worker.sendForm(loginRequest))
         {
-            System.out.println("sent: " + packedLogin.getUsername() + packedLogin.getPassword());
-            while (!TarkovTrader.authenticated)
-            {
-                Timer timer = new Timer();
-                timer.schedule(new TimerTask() {
-                    @Override
-                    public void run()
-                    {
-                        //Platform.runLater(() -> Alert.display("Login", "Authentication failed. Check username and password."));
-                    }
-                }, 2000);    
-            }
             if (TarkovTrader.authenticated)
                 startMainUI();
         }
@@ -156,7 +141,12 @@ public class LoginPrompt {
     
     private void close()
     {
+        loginStage.close();
         tarkovtrader.close();
     }
     
 }
+
+
+
+

@@ -7,10 +7,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import javafx.application.Platform;
 import tarkov.trader.objects.LoginForm;
+import tarkov.trader.objects.Form;
 
 
 public class RequestWorker implements Runnable
 {
+    private TarkovTrader trader;
+    private Form processedRequest;
     
     private Socket connection;
     public Socket serverComm;
@@ -18,7 +21,11 @@ public class RequestWorker implements Runnable
     private ObjectInputStream objInput;
     private Thread commThread;
     
-    private LinkedHashMap<String, Object> form;
+    
+    public RequestWorker(TarkovTrader trader)
+    {
+        this.trader = trader;
+    }
     
     
     @Override
@@ -36,7 +43,7 @@ public class RequestWorker implements Runnable
         }
         catch (ClassNotFoundException e)
         {
-            Platform.runLater(() -> Alert.display("Request Worker", "Failed to decipher received form object."));
+            Platform.runLater(() -> Alert.display("Request Worker", "Failed to decipher received processed request."));
         }
         catch (IOException e)
         {
@@ -46,7 +53,7 @@ public class RequestWorker implements Runnable
     
     
     public void sendInitialConnectionRequest()
-    {
+    { 
         try 
         {
             connection = new Socket("192.168.1.107", 6550);
@@ -81,9 +88,9 @@ public class RequestWorker implements Runnable
     
     private void receiveForms() throws IOException, ClassNotFoundException
     {
-        while ((form = (LinkedHashMap)objInput.readObject()) != null)
+        while ((processedRequest = (Form)objInput.readObject()) != null)
         {
-            decipherForm(form);
+            unpack(processedRequest);
         }
     }
     
@@ -99,27 +106,30 @@ public class RequestWorker implements Runnable
     }
     
     
-    public boolean sendForm(LinkedHashMap<String, Object> form)
+    public boolean sendForm(Form unprocessedRequest)
     {
         try
         {
-            objOutput.writeObject(form);
+            objOutput.writeObject(unprocessedRequest);
             return true;
         }
         catch (IOException e)
         {
-            Platform.runLater(() -> Alert.display("Request Worker", "Failed to send form to server."));
+            Platform.runLater(() -> Alert.display("Request Worker", "Failed to send request to server."));
             return false;
         }
     }
     
     
-    private void decipherForm(LinkedHashMap form)
+    private void unpack(Form processedRequest)
     {
-        if (form.containsKey("login"))
+        String type = processedRequest.getType();
+        
+        switch (type)
         {
-            LoginForm packedLogin = (LoginForm)form.get("login");
-            TarkovTrader.authenticated = packedLogin.isAuthenticated();
+            case "login":
+                LoginForm unpackedLogin = (LoginForm)processedRequest;
+                TarkovTrader.authenticated = unpackedLogin.isAuthenticated();
         }
     }
     
