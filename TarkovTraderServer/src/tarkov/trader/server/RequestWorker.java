@@ -8,10 +8,13 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
+import tarkov.trader.objects.Item;
+import tarkov.trader.objects.ItemForm;
+import tarkov.trader.objects.ItemListForm;
 
 
 public class RequestWorker implements Runnable {
@@ -22,6 +25,7 @@ public class RequestWorker implements Runnable {
     private Socket client;
     private Socket clientComm;
     private String clientIp;
+    private String clientUsername;
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
     private Form form;
@@ -106,6 +110,7 @@ public class RequestWorker implements Runnable {
                      processNewAccount(newAccountInfo);
                 break;
                 
+                
             case "login":
                 LoginForm loginform = (LoginForm)form;
                 
@@ -116,6 +121,7 @@ public class RequestWorker implements Runnable {
                     if (sendForm(loginform)) 
                     {
                         TarkovTraderServer.authenticatedUsers.put(loginform.getUsername(), clientIp);
+                        this.clientUsername = loginform.getUsername();
                         System.out.println("Successful user authentication for: " + clientIp);
                     }
                 }
@@ -128,6 +134,29 @@ public class RequestWorker implements Runnable {
                     }
                 }
                 break;
+                
+                
+            case "newitem":
+                ItemForm newitemform = (ItemForm)form;
+                
+                if (authenticateRequest())
+                    processNewItemRequest(newitemform);
+                
+                break;
+                
+                
+            case "itemlist":
+                ItemListForm itemlistform = (ItemListForm)form;
+                
+                if (authenticateRequest())
+                    processItemListRequest(itemlistform);
+                
+                break;
+                
+            default:
+                System.out.println("Received a request from " + clientIp + " but couldn't interpret the type.");
+                break;
+                
         }
     }
     
@@ -243,5 +272,132 @@ public class RequestWorker implements Runnable {
             return false;
         }
     }
+    
+    
+    private boolean authenticateRequest()
+    {
+        if (this.clientUsername != null)
+        {
+            // Should already be verified if the worker knows the username, but just double check the static authenticated users map to match username and IP
+            if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
+            {
+                return (TarkovTraderServer.authenticatedUsers.get(clientUsername).equals(clientIp));
+            }
+            else
+                return false;
+        }
+        else
+            return false;
+    }
+    
+    
+    private void processItemListRequest(ItemListForm itemlistform)
+    {
+        // Need to return an ItemListForm containing a complete ArrayList of 'Item' for client to unpack and insert into table
+        // The ItemListForm contains a HashMap with user specified search flags
+        // The flags need to be processed and built into a query string, and then used in dbworker to pull matching results
+        // Get the result set from the database, pack into an array of 'Item's
+        // 'Set' the ArrayList of 'Item's into the itemlistform, and send back to client
+        
+        ResultSet matchingItemResults = null;
+        ArrayList<Item> matchingItemList = new ArrayList();
+        
+        try
+        {
+            matchingItemResults = dbWorker.queryItems(itemlistform);
+            matchingItemList = packItems(matchingItemResults);
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Request process: Failed to retrieve item objects. " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        itemlistform.setItemList(matchingItemList);
+        if (itemlistform.getItemList() == null)
+        {
+            System.out.println("the arraylist is null");
+        }
+        else
+        {
+            System.out.println("arraylist is size: " + itemlistform.getItemList().size());
+        }
+        
+        if (sendForm(itemlistform))
+        {
+            System.out.println("Request complete: Returned item list to " + clientIp + ".");
+        }
+    }
+    
+    
+    private ArrayList<Item> packItems(ResultSet matchingItemResults) throws SQLException
+    {
+        // Pack all results into the 'Item's ArrayList 
+        
+        ArrayList<Item> matchingItemList = new ArrayList();
+        
+        while (matchingItemResults.next())
+        {
+            System.out.println("Result here");
+            matchingItemList.add((Item)convertBlobToObject((byte[]) matchingItemResults.getObject("ItemObject")));
+            System.out.println("added an object");
+        }
+        
+        return matchingItemList;
+    }
+    
+    
+    private Object convertBlobToObject(byte[] blob)
+    {
+        Object convertedObject = null;
+        ByteArrayInputStream byteInput = null;
+        ObjectInputStream objectInput = null;
+        
+        try
+        {
+            byteInput = new ByteArrayInputStream(blob);
+            objectInput = new ObjectInputStream(byteInput);
+            
+            convertedObject = objectInput.readObject();
+            return convertedObject;
+        }
+        catch (IOException e)
+        {
+            System.out.println("Request worker: IO Exception converting blob to object. Error: " + e.getMessage());
+            return null;
+        }
+        catch (ClassNotFoundException e)
+        {
+            System.out.println("Request worker: Class type not found converting blob to object. Error: " + e.getMessage());
+            return null;
+        }
+        finally 
+        {
+            try 
+            {
+                if (byteInput != null)
+                    byteInput.close();
+                if (objectInput != null)
+                    objectInput.close();
+            }
+            catch (IOException e)
+            {
+                System.out.println("Request worker: Failed to close blob to object resources.");
+            }
+        }
+    }
+    
+    
+    private void processNewItemRequest(ItemForm newitemform)
+    {
+        Item newItem = newitemform.getItem();
+        
+        if(dbWorker.insertNewItem(newItem))
+        {
+            communicator.sendAlert("New item successfully created.");
+            System.out.println("New item successfully added for " + clientIp + ".");
+        }
+    }
+   
     
 }

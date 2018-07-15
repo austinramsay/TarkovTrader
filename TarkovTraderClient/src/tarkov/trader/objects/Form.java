@@ -2,7 +2,7 @@
 package tarkov.trader.objects;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  *
@@ -12,24 +12,30 @@ import java.util.ArrayList;
 public class Form implements Serializable {
     
     public String type;
-    public ArrayList<String> flags;
+    public HashMap<String, String> flags;
+    
+    
+    // Getters
     
     public String getType()
     {
         return type;
     }
     
-    public ArrayList<String> getFlags()
+    public HashMap<String, String> getFlags()
     {
         return flags;
     }
+    
+    
+    // Setters
     
     public void setType(String type)
     {
         this.type = type;
     }
     
-    public void setFlags(ArrayList<String> flags)
+    public void setFlags(HashMap<String, String> flags)
     {
         this.flags = flags;
     }

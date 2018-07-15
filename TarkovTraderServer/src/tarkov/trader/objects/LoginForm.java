@@ -1,6 +1,8 @@
 
 package tarkov.trader.objects;
 
+import java.util.HashMap;
+
 /**
  *
  * @author austin
@@ -15,7 +17,7 @@ public class LoginForm extends Form {
     public LoginForm(String username, String password)
     {
         this.type = "login";
-        this.flags = null;
+        this.flags = new HashMap();
         this.username = username;
         this.password = password;
         this.authenticated = false;

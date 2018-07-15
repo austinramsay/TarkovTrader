@@ -3,16 +3,16 @@ package tarkov.trader.client;
 
 import java.net.*;
 import java.io.*;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import javafx.application.Platform;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
+import tarkov.trader.objects.ItemListForm;
 
 
 public class RequestWorker implements Runnable
 {
     private TarkovTrader trader;
+    private Browser browser;
     private Form processedRequest;
     
     private Socket connection;
@@ -33,7 +33,7 @@ public class RequestWorker implements Runnable
     {
         sendInitialConnectionRequest();
         
-        try 
+        try    // SHOULD MOVE THIS TO A NEW METHOD. IN CATCH SHOULD ADD AN OPTION TO RECALL FOR A RECONNECT?
         {
             while (true)
             {
@@ -44,10 +44,12 @@ public class RequestWorker implements Runnable
         catch (ClassNotFoundException e)
         {
             Platform.runLater(() -> Alert.display("Request Worker", "Failed to decipher received processed request."));
+            // TODO: NEED REQUEST WORKER TO REESTABLISH
         }
         catch (IOException e)
         {
             Platform.runLater(() -> Alert.display("Request Worker", "Failed to communicate with server."));
+            // TODO: NEED REQUEST WORKER TO REESTABLISH
         }
     }
     
@@ -56,8 +58,8 @@ public class RequestWorker implements Runnable
     { 
         try 
         {
-            connection = new Socket("192.168.1.107", 6550);
-            serverComm = new Socket("192.168.1.107", 6550);
+            connection = new Socket("70.93.96.32", 6550);
+            serverComm = new Socket("70.93.96.32", 6550);
             
             if ((connection != null) && (serverComm != null))
             {
@@ -116,6 +118,8 @@ public class RequestWorker implements Runnable
         catch (IOException e)
         {
             Platform.runLater(() -> Alert.display("Request Worker", "Failed to send request to server."));
+            e.printStackTrace();
+            // TODO: DISCONNECTING HERE
             return false;
         }
     }
@@ -131,6 +135,19 @@ public class RequestWorker implements Runnable
                 LoginForm unpackedLogin = (LoginForm)processedRequest;
                 TarkovTrader.authenticated = unpackedLogin.isAuthenticated();
                 LoginPrompt.acknowledged = true;
+                
+                break;
+                
+            case "itemlist":
+                ItemListForm itemlistform = (ItemListForm)processedRequest;
+                trader.getBrowser().populate(itemlistform);
+                
+                break;
+                
+            default:
+                Platform.runLater(() -> Alert.display("Request Worker", "Received an unknown type of form."));
+                
+                break;
         }
     }
     

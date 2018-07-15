@@ -1,6 +1,5 @@
 
 package tarkov.trader.server;
-
 import java.util.*;
 import java.io.*;
 import java.net.*;
@@ -83,6 +82,7 @@ public class TarkovTraderServer {
         try 
         {
             Class.forName(TarkovTraderServer.dbDriver);
+            
             Connection dbConnection = DriverManager.getConnection("jdbc:mysql://" + definedDbIpAddr + ":3306/" + definedDbName + "?verifyServerCertificate=false&useSSL=true", definedDbUsername, definedDbPassword);
             dbConnection.close();
             System.out.println("Database test connection successful. Starting server...");

@@ -39,13 +39,26 @@
     -fx-background-insets: 0,0,20,0;
 }
 
+.choice-box {
+    -fx-background-color: #1d1d1d;
+    -fx-font-weight: bold;
+    -fx-text-fill: #fefefe;
+    -fx-background-radius: 5;
+    -fx-font-size: 13;
+}
+
+.text-area, .text-area .content {
+    -fx-background-color: #010101;
+    -fx-text-fill: #fefefe;
+}
+
 .text-input {
     -fx-background-color: #010101;
     -fx-text-fill: #fefefe;
 }
 
 .usernameDisplay {
-    -fx-text-fill: #010101;
+    -fx-text-fill: #deb887;
     -fx-font-size: 19;
     -fx-font-weight: 900;
     -fx-underline: true;
@@ -59,4 +72,40 @@
 .hbox {
     -fx-background-color: #474747;
     -fx-border-style: solid;
+}
+
+.browserLabel {
+    -fx-font-family: "Arial";
+    -fx-font-size: 19;
+    -fx-text-fill: #deb887;
+    -fx-font-weight: 900;
+    -fx-underline: true;
+}
+
+.filterLabel {
+    -fx-font-family: "Arial";
+    -fx-font-size: 15;
+    -fx-text-fill: #deb887;
+    -fx-font-weight: 800;
+    -fx-underline: true;
+}
+
+.filterMenu {
+    -fx-background-color: #1d1d1d;
+    -fx-font-weight: bold;
+    -fx-text-fill: #fefefe;
+    -fx-background-radius: 5;
+    -fx-font-size: 13;
+}
+
+.filterMenu:hover {
+    -fx-background-color: #010101;
+}
+
+.filterMenu:pressed {
+    -fx-text-fill:#383838;
+}
+
+.table-view, .table-view .column-header, .table-view .filler {
+    -fx-background-color: #383838;
 }

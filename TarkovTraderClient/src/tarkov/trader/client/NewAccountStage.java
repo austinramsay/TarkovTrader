@@ -66,6 +66,7 @@ public class NewAccountStage
         this.worker = worker;
     }
     
+    
     public void display()
     {      
         newAccountStage = new Stage();
@@ -79,7 +80,7 @@ public class NewAccountStage
         lastNameLabel = new Label("Last name:");
         ignLabel = new Label("In-game name:");
         imageLabel = new Label("Avatar:");
-        selectedAvatarLabel = new Label("No avatar chosen");
+        selectedAvatarLabel = new Label("No avatar chosen.");
         
         usernameInput = new TextField();
         usernameInput.setPromptText("Username");
@@ -125,11 +126,13 @@ public class NewAccountStage
         GridPane.setConstraints(selectedAvatarLabel, 1, 7);
         
         
+        // Displays logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);
         upperDisplay.getChildren().add(Resources.logoViewer);
         
         
+        // Displays inputs
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(10, 10, 10, 10));
         grid.setVgap(8); // Sets the vertical gap between grid cells
@@ -137,10 +140,12 @@ public class NewAccountStage
         grid.getChildren().addAll(nameLabel,passLabel,confPassLabel,firstNameLabel,lastNameLabel,ignLabel,imageLabel,usernameInput,passwordField,confPasswordField,firstNameInput,lastNameInput,ignInput, chooseButton, selectedAvatarLabel);
         
         
+        // Displays 'Create' and 'Cancel' buttons
         HBox lowerDisplay = new HBox(13);
         lowerDisplay.setPadding(new Insets(5,0,13,0));
         lowerDisplay.setAlignment(Pos.CENTER);
         lowerDisplay.getChildren().addAll(createButton,cancelButton);
+        
         
         BorderPane border = new BorderPane();
         border.setTop(upperDisplay);
@@ -155,6 +160,7 @@ public class NewAccountStage
         newAccountStage.setResizable(false);
         newAccountStage.show();
     }
+    
     
     private File getAvatar()
     {
@@ -171,9 +177,11 @@ public class NewAccountStage
         }
         else 
         {
+            selectedAvatarLabel.setText("No avatar chosen.");
             return null;
         }
     }
+    
     
     private void submit()
     {
@@ -202,6 +210,7 @@ public class NewAccountStage
             }
         }
     }
+    
     
     private boolean verifiedFormIntegrity()
     {

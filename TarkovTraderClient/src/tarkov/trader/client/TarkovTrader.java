@@ -18,6 +18,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
 /**
  *
  * @author austin
@@ -30,6 +31,8 @@ public class TarkovTrader extends Application {
     // Object declarations
     private RequestWorker worker;
     public LoginPrompt mainLogin;
+    private Browser browser;
+    private AddItemStage addItemStage;
     private Thread workerThread;
     
     // JavaFX variable declarations
@@ -92,7 +95,7 @@ public class TarkovTrader extends Application {
     {
         // NOTE: Avatar image must be 128x128 size
         // NOTE: BorderPane is main layout for UI
-        
+        primaryStage.setOnCloseRequest(e -> this.close());
 
         // Load all images and initialize ImageViews
         loadResources();
@@ -121,7 +124,7 @@ public class TarkovTrader extends Application {
         
         // Building upper display for avatar image, username, and logo
         HBox upperDisplay = new HBox();
-        upperDisplay.setAlignment(Pos.CENTER); // This allows the username text label to be places in between the top and bottom of the upper display HBox
+        upperDisplay.setAlignment(Pos.CENTER); // This allows the username text label to be placed in between the top and bottom of the upper display HBox
         upperDisplay.getStyleClass().add("hbox");
         upperDisplay.getChildren().addAll(avatarViewer, usernameDisplay, Resources.outlineLogoViewer);
         
@@ -152,6 +155,13 @@ public class TarkovTrader extends Application {
         
         addItemButton.setGraphic(Resources.addIconViewer);
         addItemButton.getStyleClass().add("centralDisplayButton");
+        
+        
+        // Set button logic
+        logoutButton.setOnAction(e -> close());
+        browseButton.setOnAction(e -> displayBrowser());
+        addItemButton.setOnAction(e -> displayAddItemStage());
+        
         
         // Building left display
         VBox leftDisplay = new VBox(120);
@@ -189,20 +199,35 @@ public class TarkovTrader extends Application {
     }
     
     
+    public void displayDrawnUI()  // UNUSED BECAUSE OF STATIC SHARED RESOURCES, CHANGE LATER?
+    {
+        primaryStage.show();
+    }
+    
+    
+    private void displayBrowser()
+    {
+        browser = new Browser(this, worker);
+        browser.display();
+        primaryStage.close();
+    }
+    
+    
+    private void displayAddItemStage()
+    {
+        addItemStage = new AddItemStage(this, worker);
+        addItemStage.display();
+        primaryStage.close();
+    }
+    
+    
     private void loadResources()
     {
         // In the main UI, the only resource to be loaded so far is the avatar (unique to each account)
         // All other resources are generic and can be loaded at launch in the Resources class 'load' method
-        
-        try 
-        {             
-            avatar = new Image(new FileInputStream("resources/testavatar.png"));
-            avatarViewer = new ImageView(avatar);
-        }
-        catch (FileNotFoundException e)
-        {
-            System.out.println("Main UI: Failed to find avatar.");
-        }       
+                   
+        avatar = new Image(this.getClass().getResourceAsStream("/testavatar.png"));
+        avatarViewer = new ImageView(avatar); 
     }
     
     
@@ -213,11 +238,23 @@ public class TarkovTrader extends Application {
     }
     
     
+    public String getUsername()
+    {
+        return this.username;
+    }
+    
+    
     private void startWorker()
     {
         worker = new RequestWorker(this);
         workerThread = new Thread(worker);
         workerThread.start();
+    }
+    
+    
+    public Browser getBrowser()
+    {
+        return this.browser;
     }
     
     

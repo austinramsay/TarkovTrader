@@ -21,7 +21,7 @@ public class LoginPrompt {
     private TarkovTrader tarkovtrader;
     private RequestWorker worker;
     
-    public  static volatile boolean acknowledged;
+    public static volatile boolean acknowledged;
     public Stage loginStage;
     public TextField usernameInput;
     public PasswordField passwordInput;
@@ -43,6 +43,7 @@ public class LoginPrompt {
     {
         LoginPrompt.acknowledged = false;
         loginStage = new Stage();
+        loginStage.setOnCloseRequest(e -> this.close());
         
         loginStage.setTitle("Tarkov Trader Login");
         
@@ -62,7 +63,7 @@ public class LoginPrompt {
         newAccountButton = new Button("New account");
         newAccountButton.setOnAction(e -> launchNewAccountStage());
         
-
+        
         
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);

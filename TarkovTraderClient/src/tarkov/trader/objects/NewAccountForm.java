@@ -20,7 +20,6 @@ public class NewAccountForm extends Form {
     public NewAccountForm(String user, String pass, String first, String last, String ign)
     {
         this.type = "newaccount";
-        this.flags = null;
         this.username = user;
         this.password = pass;
         this.firstName = first;
