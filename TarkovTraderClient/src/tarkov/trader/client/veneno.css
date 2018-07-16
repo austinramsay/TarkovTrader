@@ -68,7 +68,7 @@
 }
 
 .combo-box-popup .list-cell:hover {
-    -fx-background-color: #00318c;
+    -fx-background-color: #010101;
 }
 
 .combo-box .cell:selected {
@@ -166,7 +166,6 @@
 }
 
 .table-row-cell:selected {
-    -fx-background-color: #00318c;
-    
+    -fx-background-color: #010101;
 }
 

@@ -24,6 +24,8 @@ import tarkov.trader.objects.ItemForm;
  * @author austin
  */
 
+// ADD AMMO, CASES, COSMETICS
+
 public class AddItemStage {
     
     private TarkovTrader trader;
