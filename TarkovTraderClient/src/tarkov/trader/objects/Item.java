@@ -1,6 +1,7 @@
 
 package tarkov.trader.objects;
 
+import java.io.File;
 import java.io.Serializable;
 
 /**
@@ -10,6 +11,7 @@ import java.io.Serializable;
 
 public class Item implements Serializable {
     
+    private File userImage;
     private String tradeState;
     private String itemType;
     private String name;
@@ -25,8 +27,9 @@ public class Item implements Serializable {
     private String dealStatus; // Finalized? Closed? Open?
     
     
-    public Item(String tradeState, String itemType, String name, int price, String ign, String username, String timezone, String keywords, String notes)
+    public Item(File userImage, String tradeState, String itemType, String name, int price, String ign, String username, String timezone, String keywords, String notes)
     {
+        this.userImage = userImage;
         this.tradeState = tradeState;
         this.itemType = itemType;
         this.name = name;
@@ -41,6 +44,11 @@ public class Item implements Serializable {
     
     
     // Getters:
+    
+    public File getImageFile()
+    {
+        return userImage;     
+    }
     
     public String getTradeState()
     {

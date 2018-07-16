@@ -37,6 +37,7 @@ public class Resources
     public static Image refreshIcon;
     public static Image cancelIcon;
     public static Image exitIcon;
+    public static Image keyBrowserIcon;
     
     public static ImageView logoViewer;
     public static ImageView outlineLogoViewer;
@@ -48,6 +49,7 @@ public class Resources
     public static ImageView refreshIconViewer;
     public static ImageView cancelIconViewer;
     public static ImageView exitIconViewer;
+    public static ImageView keyBrowserIconViewer;
     
     public static void load()
     {
@@ -67,7 +69,7 @@ public class Resources
             browserIcon = new Image(resources.getResourceStream("/browsericon.png"), 128, 128, true, true);
             browserIconViewer = new ImageView(browserIcon);
             
-            addIcon = new Image(resources.getResourceStream("/addIcon.png"), 128, 128, true, true);
+            addIcon = new Image(resources.getResourceStream("/addicon.png"), 128, 128, true, true);
             addIconViewer = new ImageView(addIcon);
             
             messagesIcon = new Image(resources.getResourceStream("/messagesicon.png"), 32, 32, true, true);

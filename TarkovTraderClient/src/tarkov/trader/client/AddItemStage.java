@@ -1,7 +1,10 @@
 
 package tarkov.trader.client;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -11,6 +14,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -24,7 +28,8 @@ import tarkov.trader.objects.ItemForm;
  * @author austin
  */
 
-// ADD AMMO, CASES, COSMETICS
+// TODO: ADD AMMO, CASES, COSMETICS
+// TODO: 
 
 public class AddItemStage {
     
@@ -229,6 +234,7 @@ public class AddItemStage {
     private void submit()
     {
         Item newItem = new Item(
+                null,
                 postTypeDropdown.getSelectionModel().getSelectedItem(),
                 itemTypeDropdown.getSelectionModel().getSelectedItem(),
                 itemNameInput.getText(),
@@ -246,7 +252,7 @@ public class AddItemStage {
             this.close();
         }
     }
-    
+
     
     private void close()
     {

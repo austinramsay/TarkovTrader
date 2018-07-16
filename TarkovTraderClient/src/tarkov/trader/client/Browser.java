@@ -20,6 +20,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -27,11 +28,13 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
+import tarkov.trader.objects.ProcessedItem;
 
 /**
  *
  * @author austin
  */
+
 public class Browser {
     
     private TarkovTrader trader;
@@ -49,6 +52,7 @@ public class Browser {
     private MenuButton tradeStatusFilter;
     private MenuButton priceRangeFilter;
     
+    TableColumn<Item, ImageView> imageColumn;
     TableColumn<Item, String> tradeStateColumn;
     TableColumn<Item, String> typeColumn;
     TableColumn<Item, String> nameColumn;
@@ -125,20 +129,24 @@ public class Browser {
         
         
         // Build the TableView
-        tradeStateColumn = new TableColumn<>("State");
-        tradeStateColumn.setMinWidth(50);
-        tradeStateColumn.setCellValueFactory(new PropertyValueFactory<>("tradeState"));
+        imageColumn = new TableColumn<>();
+        imageColumn.setMinWidth(50);
+        imageColumn.setCellValueFactory(new PropertyValueFactory<>("itemTypeImage"));
         
         typeColumn = new TableColumn<>("Item Type"); 
         typeColumn.setMinWidth(100);
         typeColumn.setCellValueFactory(new PropertyValueFactory<>("itemType"));
         
+        tradeStateColumn = new TableColumn<>("State");
+        tradeStateColumn.setMinWidth(50);
+        tradeStateColumn.setCellValueFactory(new PropertyValueFactory<>("tradeState"));
+        
         nameColumn = new TableColumn<>("Item Name");
-        nameColumn.setMinWidth(250);
+        nameColumn.setMinWidth(275);
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         
         priceColumn = new TableColumn<>("Price");
-        priceColumn.setMinWidth(100);
+        priceColumn.setMinWidth(75);
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         
         ignColumn = new TableColumn<>("In-game Name");
@@ -146,11 +154,11 @@ public class Browser {
         ignColumn.setCellValueFactory(new PropertyValueFactory<>("ign"));
         
         timezoneColumn = new TableColumn<>("Timezone");
-        timezoneColumn.setMinWidth(100);
+        timezoneColumn.setMinWidth(60);
         timezoneColumn.setCellValueFactory(new PropertyValueFactory<>("timezone"));
         
         table = new TableView<>();
-        table.getColumns().addAll(tradeStateColumn, typeColumn, nameColumn, priceColumn, ignColumn, timezoneColumn);
+        table.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, ignColumn, timezoneColumn);
         // End building TableView
         
         
@@ -174,15 +182,15 @@ public class Browser {
     }
     
     
-    public void populate(ItemListForm itemlistform)
+    public void populate(ArrayList<ProcessedItem> itemList)
     {
-        table.setItems(getItemList(itemlistform));
+        table.setItems(getItemList(itemList));
     }
     
     
-    private ObservableList<Item> getItemList(ItemListForm itemlistform)
+    private ObservableList<ProcessedItem> getItemList(ArrayList<ProcessedItem> itemList)
     {
-        return FXCollections.observableArrayList(itemlistform.getItemList());
+        return FXCollections.observableArrayList(itemList);
     }
     
     

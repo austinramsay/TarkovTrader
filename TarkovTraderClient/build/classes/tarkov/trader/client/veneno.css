@@ -147,8 +147,9 @@
     -fx-text-fill: white;
 }
 
-.table-view .table-cell{
+.table-view .table-cell {
     -fx-text-fill: white;
+    -fx-alignment: center;
 }
 
 .table-column-cell {

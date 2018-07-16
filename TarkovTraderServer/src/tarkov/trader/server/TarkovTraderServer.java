@@ -92,6 +92,7 @@ public class TarkovTraderServer {
         {
             String error = "DBConnection: " + e.getMessage() + "\n";
             System.out.println(error);
+            e.printStackTrace();
             return false;
         }
         catch (SQLException e)

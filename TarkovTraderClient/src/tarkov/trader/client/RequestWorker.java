@@ -3,10 +3,13 @@ package tarkov.trader.client;
 
 import java.net.*;
 import java.io.*;
+import java.util.ArrayList;
 import javafx.application.Platform;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
+import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
+import tarkov.trader.objects.ProcessedItem;
 
 
 public class RequestWorker implements Runnable
@@ -138,20 +141,37 @@ public class RequestWorker implements Runnable
                 TarkovTrader.ign = unpackedLogin.getIgn();
                 TarkovTrader.timezone = unpackedLogin.getTimezone();
                 LoginPrompt.acknowledged = true;
-                
                 break;
                 
             case "itemlist":
                 ItemListForm itemlistform = (ItemListForm)processedRequest;
-                trader.getBrowser().populate(itemlistform);
+                // Browser only really needs the arraylist of items to populate
+                // Convert the 'Item's to 'ProcessedItem's and get an arraylist of ProcessedItems to send to browser
                 
+                trader.getBrowser().populate(getProcessedItemList(itemlistform));
                 break;
                 
             default:
                 Platform.runLater(() -> Alert.display("Request Worker", "Received an unknown type of form."));
-                
                 break;
         }
+    }
+    
+    
+    private ArrayList<ProcessedItem> getProcessedItemList(ItemListForm itemlistform)
+    {
+        // Get the list of items from the form to begin
+        ArrayList<Item> itemList;
+        itemList = itemlistform.getItemList();
+        
+        ArrayList<ProcessedItem> processedItemList = new ArrayList<>();
+        
+        for (Item item : itemList)
+        {
+            processedItemList.add(new ProcessedItem(item));
+        }
+        
+        return processedItemList;
     }
     
     
