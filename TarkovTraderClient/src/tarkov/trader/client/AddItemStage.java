@@ -7,6 +7,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -38,13 +39,14 @@ public class AddItemStage {
     private Label ignLabelFinal;
     private Label usernameLabel;
     private Label usernameLabelFinal;
+    private Label timezoneLabelFinal;
     private Label timezoneLabel;
     private Label keywordsLabel;
     private Label imageLabel;
     private Label selectedImageLabel;
     private Label notesLabel;
     private ChoiceBox<String> postTypeDropdown;
-    private ChoiceBox<String> itemTypeDropdown;
+    private ComboBox<String> itemTypeDropdown;
     private TextField itemNameInput;
     private TextField priceInput;
     private TextField timezoneInput;
@@ -70,11 +72,12 @@ public class AddItemStage {
         itemTypeLabel = new Label("Type of item:");
         itemNameLabel = new Label("Name of item:");
         priceLabel = new Label("Price:");
-        ignLabel = new Label("IGN goes here");
+        ignLabel = new Label(TarkovTrader.ign);
         ignLabelFinal = new Label("Your IGN:");
-        usernameLabel = new Label(trader.getUsername());
+        usernameLabel = new Label(TarkovTrader.username);
         usernameLabelFinal = new Label("Trader username:");
-        timezoneLabel = new Label("Timezone:");
+        timezoneLabelFinal = new Label("Timezone:");
+        timezoneLabel = new Label(TarkovTrader.timezone);
         keywordsLabel = new Label("Search Keywords:");
         imageLabel = new Label("Image:");
         selectedImageLabel = new Label("No image chosen.");
@@ -85,17 +88,17 @@ public class AddItemStage {
         postTypeDropdown.getSelectionModel().select(0);  // WTS is default value
         postTypeDropdown.setOnAction(e -> adjustPriceInput());
         
-        itemTypeDropdown = new ChoiceBox<>();
+        itemTypeDropdown = new ComboBox<>();
         itemTypeDropdown.getItems().addAll("Key", "Quest Item", "Weapon Mod", "Weapon", "Armor");
+        itemTypeDropdown.setPromptText("Select One or Type Here");
+        itemTypeDropdown.setEditable(true);
+        itemTypeDropdown.setMinWidth(200);
         
         itemNameInput = new TextField();
         itemNameInput.setPromptText("Name");
         
         priceInput = new TextField();
         priceInput.setPromptText("Price");
-        
-        timezoneInput = new TextField();
-        timezoneInput.setPromptText("Timezone");
         
         keywordsInput = new TextField();
         keywordsInput.setPromptText("Ex. Interchange, Customs");
@@ -104,6 +107,7 @@ public class AddItemStage {
         notesInput.setPrefHeight(125);
         notesInput.setPrefWidth(175);
         notesInput.setPromptText("Ex. Will trade for bitcoin");
+        notesInput.setWrapText(true);
         
         chooseImage = new Button("Choose...");
         chooseImage.setOnAction(e -> getImage());
@@ -130,7 +134,7 @@ public class AddItemStage {
         GridPane.setConstraints(priceLabel, 0, 3);
         GridPane.setConstraints(ignLabelFinal, 0, 4);
         GridPane.setConstraints(usernameLabelFinal, 0, 5);
-        GridPane.setConstraints(timezoneLabel, 0, 6);
+        GridPane.setConstraints(timezoneLabelFinal, 0, 6);
         GridPane.setConstraints(keywordsLabel, 0, 7);
         GridPane.setConstraints(imageLabel, 0, 8);
         GridPane.setConstraints(notesLabel, 0, 10);
@@ -140,7 +144,7 @@ public class AddItemStage {
         GridPane.setConstraints(priceInput, 1, 3);
         GridPane.setConstraints(ignLabel, 1, 4);
         GridPane.setConstraints(usernameLabel, 1, 5);
-        GridPane.setConstraints(timezoneInput, 1, 6);
+        GridPane.setConstraints(timezoneLabel, 1, 6);
         GridPane.setConstraints(keywordsInput, 1, 7);
         GridPane.setConstraints(selectedImageLabel, 1, 8);
         GridPane.setConstraints(chooseImage, 1, 9);
@@ -150,10 +154,10 @@ public class AddItemStage {
         // GridPane displays input fields and labels
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(10, 10, 10, 10));
-        grid.setVgap(8); // Sets the vertical gap between grid cells
+        grid.setVgap(10); // Sets the vertical gap between grid cells
         grid.setHgap(10); // Sets the horizontal gap between grid cells
-        grid.getChildren().addAll(postTypeLabel, itemTypeLabel, itemNameLabel, itemNameInput, priceLabel, ignLabelFinal, usernameLabelFinal, timezoneLabel, keywordsLabel, imageLabel, notesLabel, postTypeDropdown, itemTypeDropdown, priceInput,
-                ignLabel, usernameLabel, timezoneInput, keywordsInput, selectedImageLabel, chooseImage, notesInput);
+        grid.getChildren().addAll(postTypeLabel, itemTypeLabel, itemNameLabel, itemNameInput, priceLabel, ignLabelFinal, usernameLabelFinal, timezoneLabelFinal, keywordsLabel, imageLabel, notesLabel, postTypeDropdown, itemTypeDropdown, priceInput,
+                ignLabel, usernameLabel, timezoneLabel, keywordsInput, selectedImageLabel, chooseImage, notesInput);
         
         
         // Displays 'Create' and 'Cancel' buttons
@@ -214,6 +218,12 @@ public class AddItemStage {
     }
     
     
+    private boolean verifiedFormIntegrity()
+    {
+        return true;
+    }
+    
+    
     private void submit()
     {
         Item newItem = new Item(
@@ -221,9 +231,9 @@ public class AddItemStage {
                 itemTypeDropdown.getSelectionModel().getSelectedItem(),
                 itemNameInput.getText(),
                 Integer.parseInt(priceInput.getText()),
-                "testign",
-                trader.getUsername(),
-                timezoneInput.getText(),
+                TarkovTrader.ign,
+                TarkovTrader.username,
+                TarkovTrader.timezone,
                 keywordsInput.getText(),
                 notesInput.getText());
                 
@@ -231,7 +241,6 @@ public class AddItemStage {
         
         if (worker.sendForm(newItemForm))
         {
-            System.out.println("Sent the new item request.");
             this.close();
         }
     }

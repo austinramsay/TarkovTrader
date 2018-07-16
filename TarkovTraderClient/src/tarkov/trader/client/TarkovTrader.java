@@ -57,7 +57,9 @@ public class TarkovTrader extends Application {
     
     
     // Logical variable declarations
-    private String username;
+    public static String username;
+    public static String ign;
+    public static String timezone;
     public static boolean connected;
     public static volatile boolean authenticated;
     // End logical variable declarations
@@ -228,19 +230,6 @@ public class TarkovTrader extends Application {
                    
         avatar = new Image(this.getClass().getResourceAsStream("/testavatar.png"));
         avatarViewer = new ImageView(avatar); 
-    }
-    
-    
-    public void setUsername(String username)
-    {
-        // Should only be called from the login prompt after a successful login
-        this.username = username;
-    }
-    
-    
-    public String getUsername()
-    {
-        return this.username;
     }
     
     

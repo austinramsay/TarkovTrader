@@ -4,6 +4,7 @@ package tarkov.trader.client;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -83,13 +84,13 @@ public class Browser {
         filterLabel = new Label("Filters:");
         filterLabel.getStyleClass().add("filterLabel");
         
-        tradeStatusFilter = new MenuButton("Trade status");
+        tradeStatusFilter = new MenuButton("Trade State");
         tradeStatusFilter.getStyleClass().add("filterMenu");
         
-        typeFilter = new MenuButton("Item type");
+        typeFilter = new MenuButton("Item Type");
         typeFilter.getStyleClass().add("filterMenu");
         
-        priceRangeFilter = new MenuButton("Price range");
+        priceRangeFilter = new MenuButton("Price Range");
         priceRangeFilter.getStyleClass().add("filterMenu");
         
         refreshButton = new Button("Refresh");
@@ -190,10 +191,8 @@ public class Browser {
         ItemListForm listrequest = new ItemListForm(buildFlagMap());
         
         // use worker to send, wait for server response, table will populate upon receiving list
-        if (worker.sendForm(listrequest))
-            System.out.println("Sent the list request");
-        else
-            System.out.println("failed");
+        if (!worker.sendForm(listrequest))
+            Platform.runLater(() -> Alert.display("Request Failed", "Failed to send item list request to server."));
     }
     
     

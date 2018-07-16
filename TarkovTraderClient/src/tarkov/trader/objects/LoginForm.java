@@ -12,6 +12,8 @@ public class LoginForm extends Form {
     
     private String username;
     private String password;
+    private String ign;
+    private String timezone;
     private boolean authenticated;
     
     public LoginForm(String username, String password)
@@ -21,6 +23,17 @@ public class LoginForm extends Form {
         this.username = username;
         this.password = password;
         this.authenticated = false;
+    }
+    
+    public boolean isAuthenticated()
+    {
+        return authenticated;
+    }
+    
+    
+    public void setAuthenticationState(boolean isNowAuthenticated)
+    {
+        authenticated = isNowAuthenticated;
     }
     
     
@@ -33,6 +46,16 @@ public class LoginForm extends Form {
     public String getPassword()
     {
         return password;
+    }
+    
+    public String getIgn()
+    {
+        return ign;
+    }
+    
+    public String getTimezone()
+    {
+        return timezone;
     }
     
     
@@ -48,15 +71,14 @@ public class LoginForm extends Form {
     }
     
     
-    public boolean isAuthenticated()
+    public void setIgn(String ign)
     {
-        return authenticated;
+        this.ign = ign;
     }
     
-    
-    public void setAuthenticationState(boolean isNowAuthenticated)
+    public void setTimezone(String timezone)
     {
-        authenticated = isNowAuthenticated;
+        this.timezone = timezone;
     }
-    
+
 }

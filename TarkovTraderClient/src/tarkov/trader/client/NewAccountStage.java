@@ -38,6 +38,7 @@ public class NewAccountStage
     private Label firstNameLabel;
     private Label lastNameLabel;
     private Label ignLabel;
+    private Label timezoneLabel;
     private Label imageLabel;
     private Label selectedAvatarLabel;
     private TextField usernameInput;
@@ -49,6 +50,7 @@ public class NewAccountStage
     private Button chooseButton;
     private Button createButton;
     private Button cancelButton;
+    private ComboBox timezoneDropdown;
     
     private String username;
     private String password;
@@ -56,6 +58,7 @@ public class NewAccountStage
     private String firstName;
     private String lastName;
     private String ign;
+    private String timezone;
     
     private boolean passwordMatch = false;
     
@@ -79,6 +82,7 @@ public class NewAccountStage
         firstNameLabel = new Label("First name:");
         lastNameLabel = new Label("Last name:");
         ignLabel = new Label("In-game name:");
+        timezoneLabel = new Label("Timezone:");
         imageLabel = new Label("Avatar:");
         selectedAvatarLabel = new Label("No avatar chosen.");
         
@@ -100,6 +104,11 @@ public class NewAccountStage
         ignInput = new TextField();
         ignInput.setPromptText("IGN");
         
+        timezoneDropdown = new ComboBox();
+        timezoneDropdown.setEditable(true);
+        timezoneDropdown.getItems().addAll("PST", "MST", "CST", "EST");
+        timezoneDropdown.setPromptText("Select or Type Here");
+        
         chooseButton = new Button("Choose...");
         chooseButton.setOnAction(e -> getAvatar());
         
@@ -115,15 +124,17 @@ public class NewAccountStage
         GridPane.setConstraints(firstNameLabel, 0, 3);
         GridPane.setConstraints(lastNameLabel, 0, 4);
         GridPane.setConstraints(ignLabel, 0, 5);
-        GridPane.setConstraints(imageLabel, 0, 6);
+        GridPane.setConstraints(timezoneLabel, 0, 6);
+        GridPane.setConstraints(imageLabel, 0, 7);
         GridPane.setConstraints(usernameInput, 1, 0);
         GridPane.setConstraints(passwordField, 1, 1);
         GridPane.setConstraints(confPasswordField, 1, 2);
         GridPane.setConstraints(firstNameInput, 1, 3);
         GridPane.setConstraints(lastNameInput, 1, 4);
         GridPane.setConstraints(ignInput, 1, 5);
-        GridPane.setConstraints(chooseButton, 1, 6);
-        GridPane.setConstraints(selectedAvatarLabel, 1, 7);
+        GridPane.setConstraints(timezoneDropdown, 1, 6);
+        GridPane.setConstraints(chooseButton, 1, 7);
+        GridPane.setConstraints(selectedAvatarLabel, 1, 8);
         
         
         // Displays logo
@@ -137,7 +148,8 @@ public class NewAccountStage
         grid.setPadding(new Insets(10, 10, 10, 10));
         grid.setVgap(8); // Sets the vertical gap between grid cells
         grid.setHgap(10); // Sets the horizontal gap between grid cells
-        grid.getChildren().addAll(nameLabel,passLabel,confPassLabel,firstNameLabel,lastNameLabel,ignLabel,imageLabel,usernameInput,passwordField,confPasswordField,firstNameInput,lastNameInput,ignInput, chooseButton, selectedAvatarLabel);
+        grid.getChildren().addAll(nameLabel,passLabel,confPassLabel,firstNameLabel,lastNameLabel,ignLabel,imageLabel,usernameInput,passwordField,confPasswordField,firstNameInput,lastNameInput,ignInput, chooseButton, 
+                selectedAvatarLabel, timezoneLabel, timezoneDropdown);
         
         
         // Displays 'Create' and 'Cancel' buttons
@@ -191,17 +203,18 @@ public class NewAccountStage
         firstName = firstNameInput.getText();
         lastName = lastNameInput.getText();
         ign = ignInput.getText();
+        timezone = (String)timezoneDropdown.getValue();
         
         // Check input fields, submit to server
         if (verifiedFormIntegrity())
         {
-            NewAccountForm newAccountInfo = new NewAccountForm(username, password, firstName, lastName, ign);
+            Form newAccountInfo = new NewAccountForm(username, password, firstName, lastName, ign, timezone);
             submitNewAccount(newAccountInfo);
         }
         else
         {
             if (passwordMatch)
-                Alert.display("Check Values", "Make sure all fields are between 3 and 16 characters. Password must be 6 to 18 characters.");
+                Alert.display("Check Values", "Make sure fields are between 3 and 24 characters. Password must be minimum 6 characters.. Timezone must be 3 to 12 characters.");
             else 
             {
                 Alert.display("Confirm Password", "Passwords do not match!");
@@ -216,15 +229,17 @@ public class NewAccountStage
     {
         passwordMatch = true;
         
-        if (username.equals("") || !isBetween(username.length(), 2, 15))
+        if (username.equals("") || !isBetween(username.length(), 2, 24))
             return false;
-        if (password.equals("") || !isBetween(password.length(), 5, 17))
+        if (password.equals("") || !isBetween(password.length(), 5, 24))
             return false;
-        if (firstName.equals("") || !isBetween(firstName.length(), 2, 15))
+        if (firstName.equals("") || !isBetween(firstName.length(), 2, 24))
             return false;
-        if (lastName.equals("") || !isBetween(lastName.length(), 2, 15))
+        if (lastName.equals("") || !isBetween(lastName.length(), 2, 24))
             return false;
-        if (ign.equals("") || !isBetween(ign.length(), 2, 15))
+        if (ign.equals("") || !isBetween(ign.length(), 2, 24))
+            return false;
+        if (timezone.equals("") || !isBetween(timezone.length(), 2, 12))
             return false;
         if (!confirmedPassword.equals(password))
         {
@@ -243,11 +258,9 @@ public class NewAccountStage
     }
     
     
-    private void submitNewAccount(NewAccountForm newAccountInfo)
-    {   
-        Form form = new NewAccountForm(username, password, firstName, lastName, ign);
-        
-        if (worker.sendForm(form))
+    private void submitNewAccount(Form newAccountInfo)
+    {           
+        if (worker.sendForm(newAccountInfo))
             this.close();
     }
     

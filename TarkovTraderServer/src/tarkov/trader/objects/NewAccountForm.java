@@ -6,8 +6,6 @@ package tarkov.trader.objects;
  * @author austin
  */
 
-import java.io.Serializable;
-
 public class NewAccountForm extends Form {
     
     private String username;
@@ -15,9 +13,10 @@ public class NewAccountForm extends Form {
     private String firstName;
     private String lastName;
     private String ign;
+    private String timezone;
     
     
-    public NewAccountForm(String user, String pass, String first, String last, String ign)
+    public NewAccountForm(String user, String pass, String first, String last, String ign, String timezone)
     {
         this.type = "newaccount";
         this.username = user;
@@ -25,6 +24,7 @@ public class NewAccountForm extends Form {
         this.firstName = first;
         this.lastName = last;
         this.ign = ign;
+        this.timezone = timezone;
     }
     
     
@@ -57,4 +57,9 @@ public class NewAccountForm extends Form {
         return ign;
     }
     
+    
+    public String getTimezone()
+    {
+        return timezone;
+    }
 }

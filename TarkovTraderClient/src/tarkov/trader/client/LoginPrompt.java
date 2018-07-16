@@ -114,7 +114,6 @@ public class LoginPrompt {
     
     public void startMainUI()
     {
-        tarkovtrader.setUsername(getUsername());
         loginStage.close();
         
         tarkovtrader.drawMainUI();
@@ -155,7 +154,6 @@ public class LoginPrompt {
     
     private boolean awaitingAuthentication()
     {
-        //return !TarkovTrader.authenticated;
         return !LoginPrompt.acknowledged;
     }
     

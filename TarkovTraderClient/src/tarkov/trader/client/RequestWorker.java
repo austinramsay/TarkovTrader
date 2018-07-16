@@ -134,6 +134,9 @@ public class RequestWorker implements Runnable
             case "login":
                 LoginForm unpackedLogin = (LoginForm)processedRequest;
                 TarkovTrader.authenticated = unpackedLogin.isAuthenticated();
+                TarkovTrader.username = unpackedLogin.getUsername();
+                TarkovTrader.ign = unpackedLogin.getIgn();
+                TarkovTrader.timezone = unpackedLogin.getTimezone();
                 LoginPrompt.acknowledged = true;
                 
                 break;

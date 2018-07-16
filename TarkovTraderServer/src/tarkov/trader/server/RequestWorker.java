@@ -44,7 +44,7 @@ public class RequestWorker implements Runnable {
         clientIp = client.getInetAddress().getHostAddress();
         
         communicator = new ClientCommunicator(clientComm);
-        dbWorker = new DatabaseWorker(clientIp, communicator);
+        dbWorker = new DatabaseWorker(clientIp, communicator, this);
         try
         {
             openStreams();
@@ -107,32 +107,15 @@ public class RequestWorker implements Runnable {
             case "newaccount":
                 NewAccountForm newAccountInfo = (NewAccountForm)form;
                 if (verifyClientAccountInfo(newAccountInfo))
-                     processNewAccount(newAccountInfo);
+                     dbWorker.insertAccountInfo(newAccountInfo, clientIp);
+                
                 break;
                 
                 
             case "login":
-                LoginForm loginform = (LoginForm)form;
-                
-                if (loginAuthenticated(loginform))
-                {
-                    loginform.setAuthenticationState(true);
-                    
-                    if (sendForm(loginform)) 
-                    {
-                        TarkovTraderServer.authenticatedUsers.put(loginform.getUsername(), clientIp);
-                        this.clientUsername = loginform.getUsername();
-                        System.out.println("Successful user authentication for: " + clientIp);
-                    }
-                }
-                else
-                {
-                    if (sendForm(loginform))
-                    {
-                        System.out.println("Failed user authentication for: " + clientIp);
-                        communicator.sendAlert("Failed account authentication. Check credentials.");
-                    }
-                }
+                LoginForm login = (LoginForm)form;
+                authenticateLogin(login);
+
                 break;
                 
                 
@@ -149,7 +132,7 @@ public class RequestWorker implements Runnable {
                 ItemListForm itemlistform = (ItemListForm)form;
                 
                 if (authenticateRequest())
-                    processItemListRequest(itemlistform);
+                    dbWorker.processItemListRequest(itemlistform);
                 
                 break;
                 
@@ -160,6 +143,11 @@ public class RequestWorker implements Runnable {
         }
     }
     
+    
+    
+    /*
+    // The next method is the main go-to for sending all forms back to client
+    */
     
     public boolean sendForm(Form form)
     {
@@ -175,104 +163,115 @@ public class RequestWorker implements Runnable {
         }
     }
     
-        
-    private void processNewAccount(NewAccountForm newAccountInfo)
-    {
-        String values = 
-                "'" + newAccountInfo.getUsername() + "', " +
-                "'" + newAccountInfo.getPassword() + "', " +
-                "'" + newAccountInfo.getFirst() + "', " +
-                "'" + newAccountInfo.getLast() + "', " +
-                "'" + newAccountInfo.getIgn() + "', " +
-                "'" + clientIp + "'";
-        
-        dbWorker.insertAccountInfo(values);
-    }
     
     
-    private boolean verifyClientAccountInfo(NewAccountForm form)
+    /*
+    // The next method deals with verifying a new account form by checking for uniqueness
+    // The database work is done by the Database Worker
+    // DBWorker returns an integer value described below
+    // The integer is accessed, and the client is notified accordingly
+    */
+    
+    private boolean verifyClientAccountInfo(NewAccountForm newAccount)
     {
         // Prevents users from creating multiple accounts (scam accounts, etc.)
-       boolean ipVerified = false;
-       boolean usernameVerified = false;
-       boolean ignVerified = false;
+        
+        boolean notified = false;
        
-       try 
-       {
-            String ipCheckCommand = existsCheckStatementFor("accounts", "ipaddr", clientIp);
-            ResultSet checkIp = dbWorker.query(ipCheckCommand);
-            checkIp.first(); // Move cursor to the first row
-            ipVerified = (checkIp.getInt(1) != 1); // Get value from first column (only one column for this query)
+        int verified = dbWorker.existCheck(clientIp, newAccount.getUsername(), newAccount.getIgn());
+        // if returns 0, success
+        // if returns 1, client ip is taken
+        // if returns 2, username is taken
+        // if returns 3, ign is taken
+        // if returns 4, failed to process
+        
+        System.out.println("Verified = " + verified);
+        System.out.println("the new username is " + newAccount.getUsername());
+        System.out.println("the new ign is: " + newAccount.getIgn());
             
-            String nameCheckCommand = existsCheckStatementFor("accounts", "username", form.getUsername());
-            ResultSet checkName = dbWorker.query(nameCheckCommand);
-            checkName.first();
-            usernameVerified = (checkName.getInt(1) != 1);
-            
-            String ignCheckCommand = existsCheckStatementFor("accounts", "ign", form.getIgn());
-            ResultSet checkIgn = dbWorker.query(ignCheckCommand);
-            checkIgn.first();
-            ignVerified = (checkIgn.getInt(1) != 1);
-            
-            boolean notified = false;
-            
-            if(!notified && !ipVerified)
-            {
-                // User has more than 1 account associated with their IP address
-                // TODO: SET FLAG FOR POTENTIAL FRAUD ACCOUNT
-                communicator.sendAlert("Failed to verify user info. Please contact: tarkovtrader@gmail.com");
-                System.out.println("Client " + clientIp + " attempted to register multiple accounts.");
-                notified = true;
-                return false;
-            }
-            
-            if(!notified && !usernameVerified)
-            {
-                communicator.sendAlert("Username is already in use. Enter a different username.");
-                notified = true;
-                return false;
-            }
-            
-            if(!notified && !ignVerified)
-            {
-                communicator.sendAlert("An account is already associated with this in-game name. Contact tarkovtrader@gmail.com if you do not already have an account.");
-                notified = true;
-                return false;
-            }
-            
-            return true;
-       }
-       catch (SQLException e)
-       {
-           System.out.println("Request Worker: SQL Exception for " + clientIp + ". Error:" + e.getMessage());
-           return false;
-       }   
-    }
-    
-    
-    private String existsCheckStatementFor(String table, String column, String input)
-    {
-        String command = "SELECT CASE WHEN EXISTS (SELECT " + column + " FROM " + table + " WHERE " + column + " = \"" + input + "\") THEN CAST(1 AS UNSIGNED) ELSE CAST(0 AS UNSIGNED) END;";
-        return command;
-    }
-    
-    
-    private boolean loginAuthenticated(LoginForm loginform)
-    {
-        try
+        if(!notified && (verified == 1))
         {
-            String command = "SELECT password FROM accounts WHERE username=\"" + loginform.getUsername() + "\""; 
-            ResultSet authResult = dbWorker.query(command);
-            authResult.first();
-            return (authResult.getString(1).equals(loginform.getPassword()));
-        }
-        catch (SQLException e)
-        {
-            System.out.println("Request Worker: SQL Exception for " + clientIp + " when attempting to authenticate. Error: " + e.getMessage());
+            // User has more than 1 account associated with their IP address
+            // TODO: SET FLAG FOR POTENTIAL FRAUD ACCOUNT
+            communicator.sendAlert("Failed to verify user info. Please contact: tarkovtrader@gmail.com");
+            System.out.println("Request: Client " + clientIp + " attempted to register multiple accounts.");
+            notified = true;
             return false;
         }
+            
+        if(!notified && (verified == 2))
+        {
+            communicator.sendAlert("Username is already in use. Enter a different username.");
+            System.out.println("Request: Client " + clientIp + " attempted to register duplicate username.");
+            notified = true;
+            return false;
+        }
+            
+        if(!notified && (verified == 3))
+        {
+            communicator.sendAlert("An account is already associated with this in-game name. Contact tarkovtrader@gmail.com if you do not already have an account.");
+            System.out.println("Request: Client " + clientIp + " attempted to register an account containing a duplicate IGN.");
+            notified = true;
+            return false;
+        }
+        
+        if(!notified && (verified == 4))
+        {
+            communicator.sendAlert("Request: Failed to register new account for " + clientIp + ". A field could not be verified");
+            notified = true;
+            return false;
+        }
+            
+        if (verified == 0)
+            return true;
+        
+        return false;
     }
     
+    
+    
+    
+    /*
+    // Authentication section
+    // Verifies login credentials
+    // Verifies requests compared to authenticated users on the static map in the main server class
+    */
+    
+    private boolean authenticateLogin(LoginForm login)
+    {
+       if (dbWorker.loginAuthenticated(login))
+       {
+            HashMap<String,String> clientInfo = dbWorker.getAuthenticatedClientInfo(login);
+            login.setAuthenticationState(true);
+            login.setIgn(clientInfo.get("ign"));
+            login.setTimezone(clientInfo.get("timezone"));
+                    
+            if (sendForm(login)) 
+            {
+                TarkovTraderServer.authenticatedUsers.put(login.getUsername(), clientIp);
+                this.clientUsername = login.getUsername();
+                System.out.println("Request: Successful user authentication for: " + clientIp);
+                return true;
+            }
+        }
+        else
+        {
+            login.setAuthenticationState(false);
+            
+            if (sendForm(login))
+            {
+                System.out.println("Request: Failed user authentication for: " + clientIp);
+                communicator.sendAlert("Failed account authentication. Check credentials.");
+                return false;
+            }
+        }
+       
+        return false;
+    }
+    
+    
+    // The next method is used to verify that a user is already placed in the static authenticated users map in the main server class
+    // Requests should not be processed if the user is not in the map
     
     private boolean authenticateRequest()
     {
@@ -290,103 +289,14 @@ public class RequestWorker implements Runnable {
             return false;
     }
     
-    
-    private void processItemListRequest(ItemListForm itemlistform)
-    {
-        // Need to return an ItemListForm containing a complete ArrayList of 'Item' for client to unpack and insert into table
-        // The ItemListForm contains a HashMap with user specified search flags
-        // The flags need to be processed and built into a query string, and then used in dbworker to pull matching results
-        // Get the result set from the database, pack into an array of 'Item's
-        // 'Set' the ArrayList of 'Item's into the itemlistform, and send back to client
-        
-        ResultSet matchingItemResults = null;
-        ArrayList<Item> matchingItemList = new ArrayList();
-        
-        try
-        {
-            matchingItemResults = dbWorker.queryItems(itemlistform);
-            matchingItemList = packItems(matchingItemResults);
-        }
-        catch (SQLException e)
-        {
-            System.out.println("Request process: Failed to retrieve item objects. " + e.getMessage());
-            e.printStackTrace();
-        }
-        
-        itemlistform.setItemList(matchingItemList);
-        if (itemlistform.getItemList() == null)
-        {
-            System.out.println("the arraylist is null");
-        }
-        else
-        {
-            System.out.println("arraylist is size: " + itemlistform.getItemList().size());
-        }
-        
-        if (sendForm(itemlistform))
-        {
-            System.out.println("Request complete: Returned item list to " + clientIp + ".");
-        }
-    }
+    // END authentication section
     
     
-    private ArrayList<Item> packItems(ResultSet matchingItemResults) throws SQLException
-    {
-        // Pack all results into the 'Item's ArrayList 
-        
-        ArrayList<Item> matchingItemList = new ArrayList();
-        
-        while (matchingItemResults.next())
-        {
-            System.out.println("Result here");
-            matchingItemList.add((Item)convertBlobToObject((byte[]) matchingItemResults.getObject("ItemObject")));
-            System.out.println("added an object");
-        }
-        
-        return matchingItemList;
-    }
     
-    
-    private Object convertBlobToObject(byte[] blob)
-    {
-        Object convertedObject = null;
-        ByteArrayInputStream byteInput = null;
-        ObjectInputStream objectInput = null;
-        
-        try
-        {
-            byteInput = new ByteArrayInputStream(blob);
-            objectInput = new ObjectInputStream(byteInput);
-            
-            convertedObject = objectInput.readObject();
-            return convertedObject;
-        }
-        catch (IOException e)
-        {
-            System.out.println("Request worker: IO Exception converting blob to object. Error: " + e.getMessage());
-            return null;
-        }
-        catch (ClassNotFoundException e)
-        {
-            System.out.println("Request worker: Class type not found converting blob to object. Error: " + e.getMessage());
-            return null;
-        }
-        finally 
-        {
-            try 
-            {
-                if (byteInput != null)
-                    byteInput.close();
-                if (objectInput != null)
-                    objectInput.close();
-            }
-            catch (IOException e)
-            {
-                System.out.println("Request worker: Failed to close blob to object resources.");
-            }
-        }
-    }
-    
+    /*
+    // The next method processes a new item submission by extracting the Item object from the generic NewItemForm
+    // And uses the database worker to insert into the 'items' table
+    */
     
     private void processNewItemRequest(ItemForm newitemform)
     {
