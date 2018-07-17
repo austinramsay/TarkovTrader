@@ -1,20 +1,16 @@
 
 package tarkov.trader.client;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -27,9 +23,6 @@ import tarkov.trader.objects.ItemForm;
  *
  * @author austin
  */
-
-// TODO: ADD AMMO, CASES, COSMETICS
-// TODO: 
 
 public class AddItemStage {
     
@@ -53,7 +46,7 @@ public class AddItemStage {
     private Label selectedImageLabel;
     private Label notesLabel;
     private ChoiceBox<String> postTypeDropdown;
-    private ComboBox<String> itemTypeDropdown;
+    private ChoiceBox<String> itemTypeDropdown;
     private TextField itemNameInput;
     private TextField priceInput;
     private TextField timezoneInput;
@@ -63,12 +56,24 @@ public class AddItemStage {
     private Button create;
     private Button cancel;
     
+    private String postType;
+    private String itemType;
+    private String itemName;
+    private int price;
+    private String ign;
+    private String username;
+    private String timezone;
+    private String keywords;
+    private String notes;
+    private File itemImageFile;
+    
     
     public AddItemStage(TarkovTrader trader, RequestWorker worker)
     {
         this.trader = trader;
         this.worker = worker;
     }
+    
     
     public void display()
     {
@@ -95,10 +100,8 @@ public class AddItemStage {
         postTypeDropdown.getSelectionModel().select(0);  // WTS is default value
         postTypeDropdown.setOnAction(e -> adjustPriceInput());
         
-        itemTypeDropdown = new ComboBox<>();
-        itemTypeDropdown.getItems().addAll("Key", "Quest Item", "Weapon Mod", "Weapon", "Armor");
-        itemTypeDropdown.setPromptText("Select One or Type Here");
-        itemTypeDropdown.setEditable(true);
+        itemTypeDropdown = new ChoiceBox<>();
+        itemTypeDropdown.getItems().addAll("Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
         itemTypeDropdown.setMinWidth(200);
         
         itemNameInput = new TextField();
@@ -227,23 +230,62 @@ public class AddItemStage {
     
     private boolean verifiedFormIntegrity()
     {
+        // This method gets the text fields and applies them to the corresponding Strings to be prepared for a new item entry
+        // Each field will be checked for integrity
+        
+        itemImageFile = null;
+        postType = postTypeDropdown.getSelectionModel().getSelectedItem();
+        itemType = itemTypeDropdown.getSelectionModel().getSelectedItem();
+        itemName = itemNameInput.getText();
+        ign = TarkovTrader.ign;
+        username = TarkovTrader.username;
+        timezone = TarkovTrader.timezone;
+        keywords = keywordsInput.getText();
+        notes = notesInput.getText();
+        
+        try { price = Integer.parseInt(priceInput.getText()); } catch (NumberFormatException e) { Platform.runLater(() -> Alert.display("Name Length", "A number was not found in the price input field.")); return false; }
+        
+        if (itemType == null) // Not really necessary to check string length, options are pre-built
+        {
+            Platform.runLater(() -> Alert.display("Required Field", "No item type was selected."));
+            return false;
+        }
+        
+        if (itemName.equals("") || !isBetween(itemName.length(), 2, 24))  // Not really necessary but just in case
+        {
+            Platform.runLater(() -> Alert.display("Name Length", "Item name must be between 3 and 24 characters."));
+            return false;
+        }
+        
+        if (!isBetween(keywords.length(), 0, 255))
+        {
+            Platform.runLater(() -> Alert.display("Keywords Length", "Keywords must have a maximum length of 255 characters."));
+            return false;
+        }
+        
+        if (!isBetween(notes.length(), 0, 255))
+        {
+            Platform.runLater(() -> Alert.display("Notes Length", "Notes must have a maximum length of 255 characters."));
+            return false;            
+        }
+        
         return true;
     }
     
     
-    private void submit()
+    private boolean isBetween(int value, int min, int max)
     {
-        Item newItem = new Item(
-                null,
-                postTypeDropdown.getSelectionModel().getSelectedItem(),
-                itemTypeDropdown.getSelectionModel().getSelectedItem(),
-                itemNameInput.getText(),
-                Integer.parseInt(priceInput.getText()),
-                TarkovTrader.ign,
-                TarkovTrader.username,
-                TarkovTrader.timezone,
-                keywordsInput.getText(),
-                notesInput.getText());
+        // Note: database will not take above 16 chars
+        return ((value >= min) && (value <= max));
+    }
+    
+    
+    private boolean submit()
+    {
+        if (!verifiedFormIntegrity())
+            return false;
+        
+        Item newItem = new Item(itemImageFile, postType, itemType, itemName, price, ign, username, timezone, keywords, notes);
                 
         ItemForm newItemForm = new ItemForm(newItem);
         
@@ -251,6 +293,8 @@ public class AddItemStage {
         {
             this.close();
         }
+        
+        return true;
     }
 
     

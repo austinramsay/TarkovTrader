@@ -34,11 +34,35 @@ public class ProcessedItem {
         switch (item.getItemType())
         {
             case "Key":
-                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/key.png")));
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/key.png"), 32, 32, true, true));
                 return itemTypeImage;
-                
+            case "Secure Container":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/securecontainer.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Weapon":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/weapon.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Weapon Mod":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/weaponmod.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Armor/Helmet":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/helmet.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Apparel":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/apparel.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Ammo":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/ammo.png"), 32, 32, true, true));
+                return itemTypeImage;               
+            case "Medicine":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/medicine.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Misc":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/misc.png"), 32, 32, true, true));
+                return itemTypeImage;
             default:
-                return null;
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/misc.png"), 32, 32, true, true));
+                return itemTypeImage;
         }
     }
     

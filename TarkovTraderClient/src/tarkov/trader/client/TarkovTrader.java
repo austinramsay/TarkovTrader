@@ -16,6 +16,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -121,14 +122,18 @@ public class TarkovTrader extends Application {
         
         
         // Logo display setup
-        HBox.setMargin(Resources.outlineLogoViewer, new Insets(10,10,10,350)); // This allows the logo to be pushed to the far right in the upper display
+        HBox upperDisplayRight = new HBox();
+        HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
+        upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
+        upperDisplayRight.getChildren().add(Resources.outlineLogoViewer);
+        //HBox.setMargin(Resources.outlineLogoViewer, new Insets(10,10,10,350)); // This allows the logo to be pushed to the far right in the upper display
         
         
-        // Building upper display for avatar image, username, and logo
+        // Building upper display for avatar image, username, and HBox for logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER); // This allows the username text label to be placed in between the top and bottom of the upper display HBox
         upperDisplay.getStyleClass().add("hbox");
-        upperDisplay.getChildren().addAll(avatarViewer, usernameDisplay, Resources.outlineLogoViewer);
+        upperDisplay.getChildren().addAll(avatarViewer, usernameDisplay, upperDisplayRight);
         
        
         // Building buttons
@@ -174,7 +179,8 @@ public class TarkovTrader extends Application {
         
         
         // Building center display
-        HBox centerDisplay = new HBox(50);
+        HBox centerDisplay = new HBox(60);
+        centerDisplay.setPadding(new Insets(0, 70, 0, 70));
         centerDisplay.setAlignment(Pos.CENTER);
         centerDisplay.getChildren().addAll(browseButton, addItemButton, searchButton);
         
@@ -210,7 +216,7 @@ public class TarkovTrader extends Application {
     private void displayBrowser()
     {
         browser = new Browser(this, worker);
-        browser.display();
+        browser.display(false);
         primaryStage.close();
     }
     

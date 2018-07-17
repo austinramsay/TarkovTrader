@@ -3,7 +3,6 @@ package tarkov.trader.client;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -11,20 +10,18 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
@@ -48,9 +45,9 @@ public class Browser {
     private TableView table;
     private MenuBar menubar;
     private Menu newSearch;
-    private MenuButton typeFilter;
-    private MenuButton tradeStatusFilter;
-    private MenuButton priceRangeFilter;
+    private ComboBox<String> typeFilter;
+    private ComboBox<String> tradeStatusFilter;
+    private ComboBox<String> priceRangeFilter;
     
     TableColumn<Item, ImageView> imageColumn;
     TableColumn<Item, String> tradeStateColumn;
@@ -60,7 +57,10 @@ public class Browser {
     TableColumn<Item, String> ignColumn;
     TableColumn<Item, String> timezoneColumn;
     
+    private HashMap<String, String> searchFlags;   // This should only be used for a direct search called by the search feature. It should be set using 'setSearchFlags' prior to calling 'display(true)'
+    
     private boolean isPopulated;
+    private boolean pullSearchFlags = false;
     
     
     public Browser(TarkovTrader trader, RequestWorker worker)
@@ -72,55 +72,84 @@ public class Browser {
     }
     
     
-    public void display()
+    public void display(boolean pullSearchFlags)   // Browser is used by the search feature, If the browser is being used for a direct search, the 'setSearchFlags' method should be called first, and this should be set true
     {
+        this.pullSearchFlags = pullSearchFlags;
+        
         browser = new Stage();
-        browser.setOnCloseRequest(e -> close());
+        browser.setOnCloseRequest(e -> close());  // For now, only closes the browser stage and reopens the main trader user interface
         
-        
+        // Build MenuBar
         menubar = new MenuBar();
-        newSearch = new Menu("Start a New Search");
+        newSearch = new Menu("Start a New Search");  // TODO: Implement setOnAction when search feature is implemented
         menubar.getMenus().addAll(newSearch);
         
-        browserLabel = new Label("Item Browser");
+        // Build 'Item Browser' label displayed on top left
+        browserLabel = new Label("Item Browser");  // Could use a graphics label instead at some point
         browserLabel.getStyleClass().add("browserLabel");
         
+        // Build 'Filters:' label displayed on top of filter selection VBox
         filterLabel = new Label("Filters:");
+        filterLabel.setPadding(new Insets(20,0,0,0));  // Needed a small extra push downward
         filterLabel.getStyleClass().add("filterLabel");
         
-        tradeStatusFilter = new MenuButton("Trade State");
-        tradeStatusFilter.getStyleClass().add("filterMenu");
         
-        typeFilter = new MenuButton("Item Type");
-        typeFilter.getStyleClass().add("filterMenu");
+        // Note: The options in these filter lists directly affect the performance of requesting an item list
+        // Note: The options string values are directly pulled from this dropdown upon submission of request and are put into the item request form object to be processed by the server
+        tradeStatusFilter = new ComboBox<>();
+        tradeStatusFilter.setPromptText("Trade Status");
+        tradeStatusFilter.getItems().addAll("All", "WTS", "WTB");
+        tradeStatusFilter.getSelectionModel().select(0);  // 
+        tradeStatusFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
         
-        priceRangeFilter = new MenuButton("Price Range");
-        priceRangeFilter.getStyleClass().add("filterMenu");
+      
+        // Note: Filter list. See note above
+        typeFilter = new ComboBox<>();
+        typeFilter.setPromptText("Item Type");
+        typeFilter.getItems().addAll("All", "Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
+        typeFilter.getSelectionModel().select(0);
+        typeFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
+
         
+        // Note: Filter list. See note above
+        priceRangeFilter = new ComboBox<>();
+        priceRangeFilter.setPromptText("Price Range");
+        priceRangeFilter.getItems().addAll("All", "1 - 50,000", "50,000 - 100,000", "100,000 - 200,000", "200,000 - 300,000", "300,000+");
+        priceRangeFilter.getSelectionModel().select(0);
+        priceRangeFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
+        
+        
+        // Build buttons on bottom of filter selection VBox
         refreshButton = new Button("Refresh");
         refreshButton.setGraphic(Resources.refreshIconViewer);
-        refreshButton.setOnAction(e -> requestItemList());
+        refreshButton.setOnAction(e -> requestItemList(buildFilterFlags()));
         
         returnButton = new Button("Return");
         returnButton.setGraphic(Resources.cancelIconViewer);
         returnButton.setOnAction(e -> close());
         
         
-        // Upper display will contain the 'Browser' label to be displayed on the left, and the 'Tarkov Trader' logo on the right
-        HBox upperDisplay = new HBox();
-        upperDisplay.setPadding(new Insets(0,20,0,20));
-        upperDisplay.setAlignment(Pos.CENTER);
-        upperDisplay.getStyleClass().add("hbox");
-        HBox.setMargin(Resources.outlineLogoViewer, new Insets(10,10,10,450)); // This allows the logo to be pushed to the far right in the upper display
-        upperDisplay.getChildren().addAll(browserLabel, Resources.outlineLogoViewer);
-        upperDisplay.getStyleClass().add("hbox");
+        // Upper display will consist of two seperate HBoxes
+        // The left HBox will only house the 'Item Browser' label
+        // The right HBox will be set to grow horizontally with priority, and align to the center-right. This will display the 'Tarkov Trader' logo
+        HBox upperDisplayLeft = new HBox();
+        HBox upperDisplayRight = new HBox();
+        upperDisplayLeft.setPadding(new Insets(0,10,0,10));
+        upperDisplayLeft.setAlignment(Pos.CENTER);
+        upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
+        browserLabel.setPadding(new Insets(0,0,0,20));
+        upperDisplayRight.getChildren().add(Resources.outlineLogoViewer);
+        upperDisplayLeft.getChildren().addAll(browserLabel, upperDisplayRight);
+        upperDisplayLeft.getStyleClass().add("hbox");
         
         
-        // This VBox will house the menu bar and the upper display that contains the browser label and logo image
+        // This VBox will house the menu bar and the 2 HBoxes built for the 'Item Browser' label and the 'Tarkov Trader' logo
         VBox mainUpperDisplay = new VBox();
-        mainUpperDisplay.getChildren().addAll(menubar, upperDisplay);
+        mainUpperDisplay.getChildren().addAll(menubar, upperDisplayLeft);
         
         
+        // This VBox will house all filter related nodes
         VBox leftDisplay = new VBox(40);
         leftDisplay.setPadding(new Insets(0,20,20,20));
         leftDisplay.getStyleClass().add("vbox");
@@ -130,60 +159,89 @@ public class Browser {
         
         // Build the TableView
         imageColumn = new TableColumn<>();
+        imageColumn.setMaxWidth(50);
         imageColumn.setMinWidth(50);
-        imageColumn.setCellValueFactory(new PropertyValueFactory<>("itemTypeImage"));
+        imageColumn.setCellValueFactory(new PropertyValueFactory<>("itemTypeImage"));  // Calls getItemTypeImage() in ProcessedItem object -- Generic item type icon stored client-side
         
-        typeColumn = new TableColumn<>("Item Type"); 
-        typeColumn.setMinWidth(100);
-        typeColumn.setCellValueFactory(new PropertyValueFactory<>("itemType"));
+        typeColumn = new TableColumn<>("Type"); 
+        typeColumn.setMaxWidth(130);
+        typeColumn.setMinWidth(130);
+        typeColumn.setCellValueFactory(new PropertyValueFactory<>("itemType"));  // Calls getItemType() in ProcessedItem object
         
         tradeStateColumn = new TableColumn<>("State");
-        tradeStateColumn.setMinWidth(50);
-        tradeStateColumn.setCellValueFactory(new PropertyValueFactory<>("tradeState"));
+        tradeStateColumn.setMaxWidth(50);
+        tradeStateColumn.setCellValueFactory(new PropertyValueFactory<>("tradeState"));  // Calls getTradeState() in ProcessedItem object
         
         nameColumn = new TableColumn<>("Item Name");
+        nameColumn.setMaxWidth(275);
         nameColumn.setMinWidth(275);
-        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));  // Calls getName() in ProcessedItem object
         
         priceColumn = new TableColumn<>("Price");
-        priceColumn.setMinWidth(75);
-        priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
+        priceColumn.setMaxWidth(100);
+        priceColumn.setMinWidth(100);
+        priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));  // Calls getPrice() in ProcessedItem object
         
         ignColumn = new TableColumn<>("In-game Name");
-        ignColumn.setMinWidth(200);
-        ignColumn.setCellValueFactory(new PropertyValueFactory<>("ign"));
+        ignColumn.setMaxWidth(220);
+        ignColumn.setMinWidth(220);
+        ignColumn.setCellValueFactory(new PropertyValueFactory<>("ign"));  // Calls getIgn() in ProcessedItem object
         
         timezoneColumn = new TableColumn<>("Timezone");
-        timezoneColumn.setMinWidth(60);
-        timezoneColumn.setCellValueFactory(new PropertyValueFactory<>("timezone"));
+        timezoneColumn.setMaxWidth(100);
+        timezoneColumn.setMinWidth(100);
+        timezoneColumn.setCellValueFactory(new PropertyValueFactory<>("timezone"));  // Calls getTimezone() in ProcessedItem object
         
         table = new TableView<>();
         table.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, ignColumn, timezoneColumn);
         // End building TableView
         
         
+        // Border pane layout: Uses top, left, and center sections
         BorderPane border = new BorderPane();
         border.setTop(mainUpperDisplay);
         border.setLeft(leftDisplay);
         border.setCenter(table);
         
         
+        // Build the scene and set stage properties
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         browser.getIcons().add(Resources.icon);
         browser.setResizable(false);
         browser.setScene(scene);
-        if (!isPopulated)
+        
+        
+        // If the browser is performing a specified search, filters are not necessary as they are already specified in the search window
+        // We can disable all nodes that control filtering since this is already done
+        if (pullSearchFlags)
         {
-            requestItemList();
-            this.isPopulated = true;
+            tradeStatusFilter.setDisable(true);
+            typeFilter.setDisable(true);
+            priceRangeFilter.setDisable(true);
+            if(requestItemList(getSearchFlags()))
+                this.isPopulated = true;
+            else
+                this.isPopulated = false;
         }
+        
+        // If the browser has not been populated, do so now
+        if (!isPopulated)  
+        {
+            tradeStatusFilter.setDisable(false);
+            typeFilter.setDisable(false);
+            priceRangeFilter.setDisable(false);
+            if (requestItemList(buildFilterFlags()))
+                this.isPopulated = true;
+        }
+        
         browser.show();
     }
     
     
     public void populate(ArrayList<ProcessedItem> itemList)
     {
+        // Calls getItemList to retrieve an OberservableList of processed items for CellValueFactory to fetch data
         table.setItems(getItemList(itemList));
     }
     
@@ -194,32 +252,113 @@ public class Browser {
     }
     
     
-    private void requestItemList()
+    private void submitRequest()
     {
-        ItemListForm listrequest = new ItemListForm(buildFlagMap());
-        
-        // use worker to send, wait for server response, table will populate upon receiving list
-        if (!worker.sendForm(listrequest))
-            Platform.runLater(() -> Alert.display("Request Failed", "Failed to send item list request to server."));
+        if (pullSearchFlags)
+            requestItemList(getSearchFlags());
+        else
+            requestItemList(buildFilterFlags());
     }
     
     
-    private HashMap<String, String> buildFlagMap()
+    private boolean requestItemList(HashMap<String, String> flagMap)
     {
-        HashMap<String, String> searchFlags = new HashMap();
+        ItemListForm listrequest = new ItemListForm(flagMap);
         
-        searchFlags.put("itemid", "%");
-        searchFlags.put("state", "%");
-        searchFlags.put("type", "%");
-        searchFlags.put("name", "%");
-        searchFlags.put("pricemin", "");
-        searchFlags.put("pricemax", "");
-        searchFlags.put("ign", "%");
-        searchFlags.put("username", "%");
-        searchFlags.put("timezone", "%");
-        searchFlags.put("keywords", "%");
+        // use worker to send, wait for server response, table will populate upon receiving list
+        if (!worker.sendForm(listrequest))
+        {
+            Platform.runLater(() -> Alert.display("Request Failed", "Failed to send item list request to server."));
+            return false;
+        }
         
-        return searchFlags;
+        return true;
+    }
+    
+    
+    private HashMap<String, String> buildFilterFlags()
+    {
+        // Trade status, Type, and Price filters
+        
+        HashMap<String, String> filterFlags = new HashMap();
+        
+        String statusFlag = tradeStatusFilter.getSelectionModel().getSelectedItem();
+        String typeFlag = typeFilter.getSelectionModel().getSelectedItem();
+        String priceFlag = priceRangeFilter.getSelectionModel().getSelectedItem();
+        
+        String definedStatusFlag;
+        String definedTypeFlag;
+        String definedPriceFlag;
+        
+        String priceMin;
+        String priceMax;
+        
+        switch(statusFlag)
+        {
+            case "All":
+                definedStatusFlag = "%";
+                break;
+            default:
+                definedStatusFlag = statusFlag;
+                break;
+        }
+        
+        switch(typeFlag)
+        {
+            case "All":
+                definedTypeFlag = "%";
+                break;
+            default:
+                definedTypeFlag = typeFlag;
+                break;
+        }
+        
+        switch(priceFlag)
+        {
+            case "1 - 50,000":
+                priceMin = "1";
+                priceMax = "50000";
+                break;
+            case "50,000 - 100,000":
+                priceMin = "50000";
+                priceMax = "100000";
+                break;
+            case "100,000 - 200,000":
+                priceMin = "100000";
+                priceMax = "200000";
+                break;
+            case "200,000 - 300,000":
+                priceMin = "200000";
+                priceMax = "300000";
+            default:
+                priceMin = "1";
+                priceMax = "50000000";
+        }
+        
+        filterFlags.put("itemid", "%");
+        filterFlags.put("state", definedStatusFlag);
+        filterFlags.put("type", definedTypeFlag);
+        filterFlags.put("name", "%");
+        filterFlags.put("pricemin", priceMin);
+        filterFlags.put("pricemax", priceMax);
+        filterFlags.put("ign", "%");
+        filterFlags.put("username", "%");
+        filterFlags.put("timezone", "%");
+        filterFlags.put("keywords", "%");
+        
+        return filterFlags;
+    }
+    
+    
+    public void setSearchFlags(HashMap<String, String> searchFlags)
+    {
+        this.searchFlags = searchFlags;
+    }
+    
+    
+    private HashMap<String, String> getSearchFlags()
+    {
+        return this.searchFlags;
     }
     
     
