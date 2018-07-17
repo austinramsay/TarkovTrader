@@ -12,6 +12,7 @@
 
 .label {
     -fx-text-fill: #fefefe;
+    -fx-font-family: "Arial Narrow";
 }
 
 .button {
@@ -90,7 +91,7 @@
 
 .usernameDisplay {
     -fx-text-fill: #deb887;
-    -fx-font-size: 19;
+    -fx-font-size: 20;
     -fx-font-weight: 900;
     -fx-underline: true;
 }
@@ -106,15 +107,13 @@
 }
 
 .browserLabel {
-    -fx-font-family: "Arial";
-    -fx-font-size: 19;
+    -fx-font-size: 22;
     -fx-text-fill: #deb887;
     -fx-font-weight: 900;
     -fx-underline: true;
 }
 
 .filterLabel {
-    -fx-font-family: "Arial";
     -fx-font-size: 15;
     -fx-text-fill: #deb887;
     -fx-font-weight: 800;
@@ -156,3 +155,34 @@
     -fx-background-color: black;
 }
 
+.table-view .increment-button, .table-view .decrement-button {
+    -fx-background-color: #424242;
+    -fx-background-radius: 2em;
+    -fx-padding: 5;
+}
+
+.table-view .increment-arrow, .table-view .decrement-arrow {
+    -fx-background-color: white;
+    -fx-padding: 0.25em;
+}
+
+-table-view .scroll-bar {
+    -fx-background-color: #424242;
+}
+
+.table-view .scroll-bar:vertical .track-background {
+    -fx-background-color: #424242;
+}
+
+.table-view .scroll-bar:vertical .track
+{
+    -fx-background-color: black;
+    -fx-background-radius: 2em;
+    -fx-border-radius: 2em;
+}
+
+.table-view .scroll-bar:vertical .thumb {
+    -fx-background-color: #383838;
+    -fx-background-radius: 2em;
+    -fx-background-insets: 2, 0, 0;
+}

@@ -98,6 +98,7 @@ public class TarkovTrader extends Application {
     {
         // NOTE: Avatar image must be 128x128 size
         // NOTE: BorderPane is main layout for UI
+        
         primaryStage.setOnCloseRequest(e -> this.close());
 
         // Load all images and initialize ImageViews
@@ -202,6 +203,7 @@ public class TarkovTrader extends Application {
         
         primaryStage.setResizable(false);
         primaryStage.setScene(mainUIscene);
+        primaryStage.setTitle("Tarkov Trader");
         primaryStage.getIcons().add(Resources.icon);
         primaryStage.show();
     }

@@ -1,6 +1,7 @@
 
 package tarkov.trader.objects;
 
+import java.text.NumberFormat;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
@@ -93,9 +94,13 @@ public class ProcessedItem {
     }
     
             
-    public int getPrice()
-    {
-        return item.getPrice();
+    public String getPrice()
+    { 
+        if (item.getPrice() == 0)
+        {
+            return null;
+        }
+        return NumberFormat.getNumberInstance().format(item.getPrice()) + "₽";
     }
     
     

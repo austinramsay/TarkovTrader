@@ -12,6 +12,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.*;
@@ -90,6 +93,7 @@ public class NewAccountStage
         usernameInput.setPromptText("Username");
         
         passwordField = new PasswordField();
+        passwordField.setOnMouseClicked(e -> Platform.runLater(() -> Alert.display("Security", "Warning: It is not recommended to use your in-game password!")));
         passwordField.setPromptText("Password");
         
         confPasswordField = new PasswordField();

@@ -43,9 +43,7 @@ public class LoginPrompt {
     {
         LoginPrompt.acknowledged = false;
         loginStage = new Stage();
-        loginStage.setOnCloseRequest(e -> this.close());
         
-        loginStage.setTitle("Tarkov Trader Login");
         
         nameLabel = new Label("Username:");
         passLabel = new Label("Password:");
@@ -93,7 +91,10 @@ public class LoginPrompt {
 
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
+        loginStage.setOnCloseRequest(e -> this.close());
+        loginStage.setTitle("Tarkov Trader Login");
         loginStage.getIcons().add(Resources.icon);
+        loginStage.setResizable(false);
         loginStage.setScene(scene);
         loginStage.show();
         
@@ -163,6 +164,7 @@ public class LoginPrompt {
         usernameInput.setText(null);
         passwordInput.setText(null);
     }
+    
     
     private void close()
     {

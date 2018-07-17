@@ -78,7 +78,6 @@ public class AddItemStage {
     public void display()
     {
         addItemStage = new Stage();
-        addItemStage.setTitle("Create an Item Listing");
         
         postTypeLabel = new Label("Listing type:");
         itemTypeLabel = new Label("Type of item:");
@@ -185,6 +184,7 @@ public class AddItemStage {
         
         scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
+        addItemStage.setTitle("Create an Item Listing");
         addItemStage.getIcons().add(Resources.icon);
         addItemStage.setScene(scene);
         addItemStage.setResizable(false);
@@ -243,7 +243,7 @@ public class AddItemStage {
         keywords = keywordsInput.getText();
         notes = notesInput.getText();
         
-        try { price = Integer.parseInt(priceInput.getText()); } catch (NumberFormatException e) { Platform.runLater(() -> Alert.display("Name Length", "A number was not found in the price input field.")); return false; }
+        
         
         if (itemType == null) // Not really necessary to check string length, options are pre-built
         {
@@ -251,11 +251,13 @@ public class AddItemStage {
             return false;
         }
         
-        if (itemName.equals("") || !isBetween(itemName.length(), 2, 24))  // Not really necessary but just in case
+        
+        if (itemName.equals("") || !isBetween(itemName.length(), 2, 38))  // Not really necessary but just in case
         {
-            Platform.runLater(() -> Alert.display("Name Length", "Item name must be between 3 and 24 characters."));
+            Platform.runLater(() -> Alert.display("Name Length", "Item name must be between 3 and 38 characters."));
             return false;
         }
+        
         
         if (!isBetween(keywords.length(), 0, 255))
         {
@@ -263,10 +265,22 @@ public class AddItemStage {
             return false;
         }
         
+        
         if (!isBetween(notes.length(), 0, 255))
         {
             Platform.runLater(() -> Alert.display("Notes Length", "Notes must have a maximum length of 255 characters."));
             return false;            
+        }
+        
+        
+        if (!postType.equals("WTB"))
+            try { price = Integer.parseInt(priceInput.getText()); } catch (NumberFormatException e) { Platform.runLater(() -> Alert.display("Name Length", "A number was not found in the price input field.")); return false; }
+        
+        
+        if (!postType.equals("WTB") && (price < 1) || (price > 50000000))
+        {
+            Platform.runLater(() -> Alert.display("Price Range", "Specified price is out of range. Enter a number greater than 1 and less than 50 million."));
+            return false;
         }
         
         return true;

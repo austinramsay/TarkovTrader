@@ -99,7 +99,6 @@ public class Browser {
         tradeStatusFilter = new ComboBox<>();
         tradeStatusFilter.setPromptText("Trade Status");
         tradeStatusFilter.getItems().addAll("All", "WTS", "WTB");
-        tradeStatusFilter.getSelectionModel().select(0);  // 
         tradeStatusFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
         
       
@@ -107,7 +106,6 @@ public class Browser {
         typeFilter = new ComboBox<>();
         typeFilter.setPromptText("Item Type");
         typeFilter.getItems().addAll("All", "Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
-        typeFilter.getSelectionModel().select(0);
         typeFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
 
         
@@ -115,7 +113,6 @@ public class Browser {
         priceRangeFilter = new ComboBox<>();
         priceRangeFilter.setPromptText("Price Range");
         priceRangeFilter.getItems().addAll("All", "1 - 50,000", "50,000 - 100,000", "100,000 - 200,000", "200,000 - 300,000", "300,000+");
-        priceRangeFilter.getSelectionModel().select(0);
         priceRangeFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
         
         
@@ -207,6 +204,7 @@ public class Browser {
         // Build the scene and set stage properties
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
+        browser.setTitle("Item Browser");
         browser.getIcons().add(Resources.icon);
         browser.setResizable(false);
         browser.setScene(scene);
@@ -282,10 +280,10 @@ public class Browser {
         
         HashMap<String, String> filterFlags = new HashMap();
         
-        String statusFlag = tradeStatusFilter.getSelectionModel().getSelectedItem();
-        String typeFlag = typeFilter.getSelectionModel().getSelectedItem();
-        String priceFlag = priceRangeFilter.getSelectionModel().getSelectedItem();
-        
+        String statusFlag;
+        String typeFlag;
+        String priceFlag;
+ 
         String definedStatusFlag;
         String definedTypeFlag;
         String definedPriceFlag;
@@ -293,15 +291,42 @@ public class Browser {
         String priceMin;
         String priceMax;
         
+        
+        if (tradeStatusFilter.getSelectionModel().isEmpty())
+            statusFlag = "All";
+        else
+            statusFlag = tradeStatusFilter.getSelectionModel().getSelectedItem();
+        
+        
+        if (typeFilter.getSelectionModel().isEmpty())
+            typeFlag = "All";
+        else
+            typeFlag = typeFilter.getSelectionModel().getSelectedItem();
+        
+        
+        if (priceRangeFilter.getSelectionModel().isEmpty())
+            priceFlag = "All";
+        else 
+            priceFlag = priceRangeFilter.getSelectionModel().getSelectedItem();
+
+        
         switch(statusFlag)
         {
             case "All":
                 definedStatusFlag = "%";
+                priceRangeFilter.setDisable(false);
+                break;
+            case "WTB":
+                definedStatusFlag = "WTB";
+                priceFlag = "All";
+                priceRangeFilter.setDisable(true);
                 break;
             default:
                 definedStatusFlag = statusFlag;
+                priceRangeFilter.setDisable(false);
                 break;
         }
+        
         
         switch(typeFlag)
         {
@@ -312,6 +337,7 @@ public class Browser {
                 definedTypeFlag = typeFlag;
                 break;
         }
+        
         
         switch(priceFlag)
         {
@@ -330,10 +356,12 @@ public class Browser {
             case "200,000 - 300,000":
                 priceMin = "200000";
                 priceMax = "300000";
-            default:
-                priceMin = "1";
+                break;
+            default:  // Catches "All" flag  --  Also used by the WTB flag. WTB flag sets Price flag to "All" or else WTB posts will not return in the query results.
+                priceMin = "0";
                 priceMax = "50000000";
         }
+        
         
         filterFlags.put("itemid", "%");
         filterFlags.put("state", definedStatusFlag);

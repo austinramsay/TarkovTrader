@@ -387,7 +387,7 @@ public class DatabaseWorker
         
         if (searchFlags.get("pricemin").equals("") && searchFlags.get("pricemax").equals("")) // If there was no price range specified, use 1 to 50 million
         {
-            pricemin = "1";
+            pricemin = "0";
             pricemax = "50000000"; 
         }
         else // If price range was specified, use set values
