@@ -9,20 +9,22 @@ package tarkov.trader.objects;
 public class NewAccountForm extends Form {
     
     private String username;
-    private String password;
+    private String hashedPassword;
+    private byte[] salt;
     private String firstName;
     private String lastName;
     private String ign;
     private String timezone;
     
     
-    public NewAccountForm(String user, String pass, String first, String last, String ign, String timezone)
+    public NewAccountForm(String username, String hashedPassword, byte[] salt, String firstName, String lastName, String ign, String timezone)
     {
         this.type = "newaccount";
-        this.username = user;
-        this.password = pass;
-        this.firstName = first;
-        this.lastName = last;
+        this.username = username;
+        this.hashedPassword = hashedPassword;
+        this.salt = salt;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.ign = ign;
         this.timezone = timezone;
     }
@@ -34,9 +36,15 @@ public class NewAccountForm extends Form {
     }
     
     
-    public String getPassword()
+    public String getHashedPassword()
     {
-        return password;
+        return hashedPassword;
+    }
+    
+    
+    public byte[] getSalt()
+    {
+        return salt;
     }
     
     

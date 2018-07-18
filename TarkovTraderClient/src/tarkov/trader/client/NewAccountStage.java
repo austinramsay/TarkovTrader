@@ -7,14 +7,11 @@ package tarkov.trader.client;
  */
 import tarkov.trader.objects.NewAccountForm;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.*;
@@ -23,6 +20,7 @@ import javafx.scene.image.*;
 import javafx.scene.layout.*;
 import javafx.stage.*;
 import javafx.stage.FileChooser.ExtensionFilter;
+import javax.xml.bind.DatatypeConverter;
 import tarkov.trader.objects.Form;
 
 
@@ -54,14 +52,6 @@ public class NewAccountStage
     private Button createButton;
     private Button cancelButton;
     private ComboBox timezoneDropdown;
-    
-    private String username;
-    private String password;
-    private String confirmedPassword;
-    private String firstName;
-    private String lastName;
-    private String ign;
-    private String timezone;
     
     private boolean passwordMatch = false;
     
@@ -199,20 +189,93 @@ public class NewAccountStage
     }
     
     
+    // Getters:
+    private String getUsername()
+    {
+        return usernameInput.getText();
+    }
+    
+    private String getPassword()
+    {
+        return passwordField.getText();
+    }
+    
+    private String getConfPassword()
+    {
+        return confPasswordField.getText();
+    }
+    
+    private String getFirstName()
+    {
+        return firstNameInput.getText();
+    }
+    
+    private String getLastName()
+    {
+        return lastNameInput.getText();
+    }
+    
+    private String getIgn()
+    {
+        return ignInput.getText();
+    }
+    
+    private String getTimezone()
+    {
+        return (String)timezoneDropdown.getValue();
+    }
+    // End getters
+    
+    
+    private boolean verifiedFormIntegrity()
+    {
+        passwordMatch = true;
+        
+        if (getUsername().equals("") || !isBetween(getUsername().length(), 2, 24))
+            return false;
+        if (getPassword().equals("") || !isBetween(getPassword().length(), 5, 24))
+            return false;
+        if (getFirstName().equals("") || !isBetween(getFirstName().length(), 2, 24))
+            return false;
+        if (getLastName().equals("") || !isBetween(getLastName().length(), 2, 24))
+            return false;
+        if (getIgn().equals("") || !isBetween(getIgn().length(), 2, 24))
+            return false;
+        if (getTimezone() == null || getTimezone().equals("") || !isBetween(getTimezone().length(), 2, 12))
+            return false;
+        if (!getConfPassword().equals(getPassword()))
+        {
+            passwordMatch = false;
+            return true;
+        }
+        else
+            return true;
+    }
+    
+        
+    private boolean isBetween(int value, int min, int max)
+    {
+        // Note: database will not take above 16 chars
+        return ((value > min) && (value <= max));
+    }
+    
+    
     private void submit()
     {
-        username = usernameInput.getText();
-        password = passwordField.getText();
-        confirmedPassword = confPasswordField.getText();
-        firstName = firstNameInput.getText();
-        lastName = lastNameInput.getText();
-        ign = ignInput.getText();
-        timezone = (String)timezoneDropdown.getValue();
+        byte[] salt = getSalt();
         
         // Check input fields, submit to server
         if (verifiedFormIntegrity())
         {
-            Form newAccountInfo = new NewAccountForm(username, password, firstName, lastName, ign, timezone);
+            Form newAccountInfo = new NewAccountForm(
+                    getUsername(), 
+                    getHashedPassword(salt), 
+                    salt,
+                    getFirstName(), 
+                    getLastName(), 
+                    getIgn(), 
+                    getTimezone());
+            
             submitNewAccount(newAccountInfo);
         }
         else
@@ -229,38 +292,41 @@ public class NewAccountStage
     }
     
     
-    private boolean verifiedFormIntegrity()
+    public String getHashedPassword(byte[] salt)
     {
-        passwordMatch = true;
+        byte[] hashedBytes = null;
         
-        if (username.equals("") || !isBetween(username.length(), 2, 24))
-            return false;
-        if (password.equals("") || !isBetween(password.length(), 5, 24))
-            return false;
-        if (firstName.equals("") || !isBetween(firstName.length(), 2, 24))
-            return false;
-        if (lastName.equals("") || !isBetween(lastName.length(), 2, 24))
-            return false;
-        if (ign.equals("") || !isBetween(ign.length(), 2, 24))
-            return false;
-        if (timezone.equals("") || !isBetween(timezone.length(), 2, 12))
-            return false;
-        if (!confirmedPassword.equals(password))
+        try 
+        {         
+            MessageDigest passDigest = MessageDigest.getInstance("SHA-512");
+            hashedBytes = passDigest.digest(getPassword().getBytes(StandardCharsets.UTF_8));
+            String hashedPassword = DatatypeConverter.printHexBinary(hashedBytes);
+            return hashedPassword;
+            
+        } catch (NoSuchAlgorithmException e)
         {
-            passwordMatch = false;
-            return true;
+            Platform.runLater(() -> Alert.display("Security", "Failed to secure password before sending to server."));
+            return null;
         }
-        else
-            return true;
     }
     
     
-    private boolean isBetween(int value, int min, int max)
+    private byte[] getSalt()
     {
-        // Note: database will not take above 16 chars
-        return ((value > min) && (value <= max));
+        try 
+        {
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+            byte[] salt = new byte[16];
+            random.nextBytes(salt);
+            return salt;
+        }
+        catch (NoSuchAlgorithmException e)
+        {
+            Platform.runLater(() -> Alert.display("Security", "Password hash type not supported."));
+            return null;
+        }
     }
-    
+  
     
     private void submitNewAccount(Form newAccountInfo)
     {           

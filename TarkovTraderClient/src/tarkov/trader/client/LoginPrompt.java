@@ -1,6 +1,8 @@
 package tarkov.trader.client;
 
-import java.util.concurrent.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -8,6 +10,7 @@ import javafx.scene.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.*;
+import javax.xml.bind.DatatypeConverter;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
 
@@ -50,10 +53,10 @@ public class LoginPrompt {
         usernameInput = new TextField();
         passwordInput = new PasswordField();
         passwordInput.setPromptText("Password");
-        passwordInput.setOnAction(e -> attemptAuthentication());
+        passwordInput.setOnAction(e -> submit());
         
         loginButton = new Button("Login");
-        loginButton.setOnAction(e -> attemptAuthentication());
+        loginButton.setOnAction(e -> submit());
 
         cancelButton = new Button("Cancel");
         cancelButton.setOnAction(e -> close());
@@ -111,12 +114,18 @@ public class LoginPrompt {
     {
         return passwordInput.getText();
     }
-        
     
+    
+    private void clearFields()
+    {
+        usernameInput.setText(null);
+        passwordInput.setText(null);
+    }
+    
+        
     public void startMainUI()
     {
         loginStage.close();
-        
         tarkovtrader.drawMainUI();
     }
     
@@ -129,9 +138,37 @@ public class LoginPrompt {
     }
     
     
-    private void attemptAuthentication()
+    public String getHashedPassword()
     {
-        Form loginRequest = new LoginForm(getUsername(), getPassword());
+        byte[] hashedBytes = null;
+        
+        try 
+        {
+            MessageDigest passDigest = MessageDigest.getInstance("SHA-512");
+            hashedBytes = passDigest.digest(getPassword().getBytes(StandardCharsets.UTF_8));
+            String hashedPassword = DatatypeConverter.printHexBinary(hashedBytes);
+            return hashedPassword;
+            
+        } catch (NoSuchAlgorithmException e)
+        {
+            Platform.runLater(() -> Alert.display("Security", "Failed to secure password before sending to server."));
+            return null;
+        }
+    }
+    
+    
+    private void submit()
+    {
+        if (verifyFormIntegrity())
+            attemptAuthentication();
+        else
+            Platform.runLater(() -> Alert.display("Enter Credentials", "Please input a username and password."));
+    }
+    
+    
+    private boolean attemptAuthentication()
+    {
+        Form loginRequest = new LoginForm(getUsername(), getHashedPassword());
 
         if (worker.sendForm(loginRequest))
         {
@@ -142,7 +179,10 @@ public class LoginPrompt {
             
             // Authentication succeeds -> draw the main user interface
             if (TarkovTrader.authenticated)
+            {
                 startMainUI();
+                return true;
+            }
             
             // Authentication failed
             // Error message sent from server-side and has been viewed by client
@@ -150,6 +190,8 @@ public class LoginPrompt {
             clearFields();
             LoginPrompt.acknowledged = false;
         }
+        
+        return false;
     }
     
     
@@ -159,11 +201,16 @@ public class LoginPrompt {
     }
     
     
-    private void clearFields()
+    private boolean verifyFormIntegrity()
     {
-        usernameInput.setText(null);
-        passwordInput.setText(null);
+        if ((getUsername().equals("")) || (getPassword().equals("")))
+            return false;
+        
+        return true;
     }
+    
+    
+
     
     
     private void close()

@@ -4,9 +4,14 @@ package tarkov.trader.server;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import javafx.application.Platform;
+import javax.xml.bind.DatatypeConverter;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.LoginForm;
@@ -104,20 +109,36 @@ public class DatabaseWorker
         
     public boolean loginAuthenticated(LoginForm loginform)
     {
-        String command = "SELECT password FROM accounts WHERE username=?;";
+        String saltCommand = "SELECT salt FROM accounts WHERE username=?;";
+        String passwordCommand = "SELECT password FROM accounts WHERE username=?;";
+        
         Connection dbConnection = null;
         PreparedStatement statement = null;
         ResultSet result = null;
+        
+        // Pull the unique salt for the user from the DB
+        // Hash the received password from loginform with the unique salt
+        // Compare to stored hashed password in database for authentication
+        
+        byte[] storedSalt;
         
         try
         {
             dbConnection = this.getDBconnection();
             
-            statement = dbConnection.prepareStatement(command);
+            statement = dbConnection.prepareStatement(saltCommand);
             statement.setString(1, loginform.getUsername());
             result = statement.executeQuery();
             result.first();
-            return result.getString(1).equals(loginform.getPassword());
+            storedSalt = result.getBytes(1);
+            
+            statement = null;
+            statement = dbConnection.prepareStatement(passwordCommand);
+            statement.setString(1, loginform.getUsername());
+            result = statement.executeQuery();
+            result.first();
+            
+            return(this.getHashedPassword(loginform.getHashedPassword(), storedSalt).equals(result.getString(1)));
         }
         catch (SQLException e)
         {
@@ -134,6 +155,26 @@ public class DatabaseWorker
                 if (dbConnection != null)
                     dbConnection.close();
             } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources when verifying login for " + clientIp + ". Error: " + e.getMessage()); }
+        }
+    }
+    
+    
+    public String getHashedPassword(String tobehashed, byte[] salt)
+    {
+        byte[] hashedBytes = null;
+        
+        try 
+        {         
+            MessageDigest passDigest = MessageDigest.getInstance("SHA-512");
+            passDigest.update(salt);
+            hashedBytes = passDigest.digest(tobehashed.getBytes(StandardCharsets.UTF_8));
+            String hashedPassword = DatatypeConverter.printHexBinary(hashedBytes);
+            return hashedPassword;
+            
+        } catch (NoSuchAlgorithmException e)
+        {
+            System.out.println("Security: Failed to hash password with specified algorithm.");
+            return null;
         }
     }
     
@@ -234,7 +275,7 @@ public class DatabaseWorker
     
     public void insertAccountInfo(NewAccountForm newAccount, String clientIp)
     {        
-        String command = "INSERT INTO accounts (username, password, firstname, lastname, ign, timezone, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?);";
+        String command = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
         Connection dbConnection = null;
         PreparedStatement statement = null;
         
@@ -244,12 +285,13 @@ public class DatabaseWorker
 
             statement = dbConnection.prepareStatement(command);
             statement.setString(1, newAccount.getUsername());
-            statement.setString(2, newAccount.getPassword());
-            statement.setString(3, newAccount.getFirst());
-            statement.setString(4, newAccount.getLast());
-            statement.setString(5, newAccount.getIgn());
-            statement.setString(6, newAccount.getTimezone());
-            statement.setString(7, clientIp);
+            statement.setString(2, this.getHashedPassword(newAccount.getHashedPassword(), newAccount.getSalt()));   // We will receive a one time hashed SHA-512 password. Hash this with the unique salt to store into DB
+            statement.setBytes(3, newAccount.getSalt());
+            statement.setString(4, newAccount.getFirst());
+            statement.setString(5, newAccount.getLast());
+            statement.setString(6, newAccount.getIgn());
+            statement.setString(7, newAccount.getTimezone());
+            statement.setString(8, clientIp);
             statement.executeUpdate();
             
             System.out.println("DBWorker: New account success from: " + clientIp);

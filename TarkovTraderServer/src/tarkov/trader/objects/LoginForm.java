@@ -11,31 +11,28 @@ import java.util.HashMap;
 public class LoginForm extends Form {
     
     private String username;
-    private String password;
+    private String hashedPassword;
     private String ign;
     private String timezone;
     private boolean authenticated;
     
-    public LoginForm(String username, String password)
+    public LoginForm(String username, String hashedPassword)
     {
         this.type = "login";
         this.flags = new HashMap();
         this.username = username;
-        this.password = password;
+        this.hashedPassword = hashedPassword;
         this.authenticated = false;
     }
+    
+    
+    // Getters:
     
     public boolean isAuthenticated()
     {
         return authenticated;
     }
-    
-    
-    public void setAuthenticationState(boolean isNowAuthenticated)
-    {
-        authenticated = isNowAuthenticated;
-    }
-    
+   
     
     public String getUsername()
     {
@@ -43,9 +40,9 @@ public class LoginForm extends Form {
     }
     
     
-    public String getPassword()
+    public String getHashedPassword()
     {
-        return password;
+        return hashedPassword;
     }
     
     public String getIgn()
@@ -59,15 +56,24 @@ public class LoginForm extends Form {
     }
     
     
+    
+    // Setters:
+    
+    public void setAuthenticationState(boolean isNowAuthenticated)
+    {
+        authenticated = isNowAuthenticated;
+    }
+    
+    
     public void setUsername(String username)
     {
         this.username = username;
     }
     
     
-    public void setPassword(String password)
+    public void setHashedPassword(String hashedPassword)
     {
-        this.password = password;
+        this.hashedPassword = hashedPassword;
     }
     
     

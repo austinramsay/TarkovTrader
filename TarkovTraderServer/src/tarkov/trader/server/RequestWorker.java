@@ -184,10 +184,6 @@ public class RequestWorker implements Runnable {
         // if returns 2, username is taken
         // if returns 3, ign is taken
         // if returns 4, failed to process
-        
-        System.out.println("Verified = " + verified);
-        System.out.println("the new username is " + newAccount.getUsername());
-        System.out.println("the new ign is: " + newAccount.getIgn());
             
         if(!notified && (verified == 1))
         {
@@ -233,6 +229,7 @@ public class RequestWorker implements Runnable {
     
     /*
     // Authentication section
+    // Gets users hashed password, and verifies with received hashed password
     // Verifies login credentials
     // Verifies requests compared to authenticated users on the static map in the main server class
     */
