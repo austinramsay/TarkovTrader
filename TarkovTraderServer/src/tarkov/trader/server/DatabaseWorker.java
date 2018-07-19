@@ -2,6 +2,7 @@
 package tarkov.trader.server;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.charset.StandardCharsets;
@@ -102,8 +103,43 @@ public class DatabaseWorker
     }
     
     
+    private byte[] simpleBlobQuery(String command, String columnName, String onlyParameter)
+    {
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        ResultSet result = null;
+        
+        try 
+        {
+            dbConnection = this.getDBconnection();
+            
+            statement = dbConnection.prepareStatement(command);
+            statement.setString(1, onlyParameter);
+            result = statement.executeQuery();
+            result.first();
+            return result.getBytes(columnName);
+        }
+        catch (SQLException e)
+        {
+            System.out.println("DBWorker: Failed to perform simple object query. Given command: " + command + ". Error: " + e.getMessage());
+            return null;
+        }
+        finally 
+        {
+            try {
+                if (result != null)
+                    result.close();
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { System.out.println("DBWorker: Failed to close simple query resources."); }
+        }
+    }
+    
+    
     /*
-    // The next section deals with authenticating user logins
+    // The next section deals with authenticating user logins and retrieving account info upon login
     // The users password is matched to their username and returns a boolean value to be used in Request Worker
     */
         
@@ -197,6 +233,23 @@ public class DatabaseWorker
     }
     
     
+    public File getUserImageFile(String username)
+    {
+        String command = "SELECT image FROM accounts WHERE username=?";
+        String columnName = "image";
+        String onlyParameter = username;
+        
+        byte[] fileBytes = simpleBlobQuery(command, columnName, onlyParameter);
+        
+        if (fileBytes == null)
+            return null;
+        
+        Object fileObject = convertBlobToObject(fileBytes);
+        
+        return (File)fileObject;
+    }
+    
+    
     
     /* 
     // The next section deals with submitting a new account to the database
@@ -275,7 +328,7 @@ public class DatabaseWorker
     
     public void insertAccountInfo(NewAccountForm newAccount, String clientIp)
     {        
-        String command = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+        String command = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, image, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
         Connection dbConnection = null;
         PreparedStatement statement = null;
         
@@ -291,7 +344,8 @@ public class DatabaseWorker
             statement.setString(5, newAccount.getLast());
             statement.setString(6, newAccount.getIgn());
             statement.setString(7, newAccount.getTimezone());
-            statement.setString(8, clientIp);
+            statement.setObject(8, newAccount.getUserImageFile());
+            statement.setString(9, clientIp);
             statement.executeUpdate();
             
             System.out.println("DBWorker: New account success from: " + clientIp);

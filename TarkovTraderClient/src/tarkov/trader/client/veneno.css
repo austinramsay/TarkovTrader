@@ -12,7 +12,8 @@
 
 .label {
     -fx-text-fill: #fefefe;
-    -fx-font-family: "Arial Narrow";
+    -fx-font-family: "Arial";
+    -fx-font-weight: bold;
 }
 
 .button {
@@ -106,15 +107,22 @@
     -fx-border-style: solid;
 }
 
-.browserLabel {
+.windowLabel {
     -fx-font-size: 22;
     -fx-text-fill: #deb887;
     -fx-font-weight: 900;
     -fx-underline: true;
 }
 
-.filterLabel {
+.subWindowLabel {
     -fx-font-size: 15;
+    -fx-text-fill: #deb887;
+    -fx-font-weight: 800;
+    -fx-underline: true;
+}
+
+.itemNameLabel {
+    -fx-font-size: 17;
     -fx-text-fill: #deb887;
     -fx-font-weight: 800;
     -fx-underline: true;

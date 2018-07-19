@@ -3,8 +3,9 @@ package tarkov.trader.objects;
 
 import java.io.File;
 import java.io.Serializable;
-import java.text.NumberFormat;
-import java.util.Locale;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  *
@@ -23,6 +24,8 @@ public class Item implements Serializable {
     private String username;
     private String keywords;
     private String notes;
+    private String date;
+    
     
     // To be 'set' by the server
     private int itemId; // Will be set from the database autoincrement id value
@@ -42,6 +45,7 @@ public class Item implements Serializable {
         this.notes = notes;
         this.keywords = keywords;
         this.dealStatus = "open";
+        setDate();
     }
     
     
@@ -107,6 +111,11 @@ public class Item implements Serializable {
         return dealStatus;
     }
     
+    public String getDate()
+    {
+        return date;
+    }
+    
     // Setters:
     
     public void setItemId(int id)
@@ -117,5 +126,11 @@ public class Item implements Serializable {
     public void setDealStatus(String status)
     {
         this.dealStatus = status;
+    }
+    
+    private void setDate()
+    {
+        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+        this.date = dateFormat.format(new Date());
     }
 }

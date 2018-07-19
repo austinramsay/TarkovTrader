@@ -1,6 +1,7 @@
 
 package tarkov.trader.objects;
 
+import java.io.File;
 import java.util.HashMap;
 
 /**
@@ -15,6 +16,8 @@ public class LoginForm extends Form {
     private String ign;
     private String timezone;
     private boolean authenticated;
+    private File userImageFile;
+    
     
     public LoginForm(String username, String hashedPassword)
     {
@@ -45,14 +48,22 @@ public class LoginForm extends Form {
         return hashedPassword;
     }
     
+    
     public String getIgn()
     {
         return ign;
     }
     
+    
     public String getTimezone()
     {
         return timezone;
+    }
+    
+    
+    public File getUserImageFile()
+    {
+        return userImageFile;
     }
     
     
@@ -82,9 +93,16 @@ public class LoginForm extends Form {
         this.ign = ign;
     }
     
+    
     public void setTimezone(String timezone)
     {
         this.timezone = timezone;
+    }
+    
+    
+    public void setUserImageFile(File userImageFile)
+    {
+        this.userImageFile = userImageFile;
     }
 
 }

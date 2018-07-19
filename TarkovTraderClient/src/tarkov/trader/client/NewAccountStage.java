@@ -5,6 +5,7 @@ package tarkov.trader.client;
  *
  * @author austin
  */
+
 import tarkov.trader.objects.NewAccountForm;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -54,6 +55,7 @@ public class NewAccountStage
     private ComboBox timezoneDropdown;
     
     private boolean passwordMatch = false;
+    private File userImageFile;
     
     
     public NewAccountStage(LoginPrompt login, RequestWorker worker)
@@ -65,6 +67,8 @@ public class NewAccountStage
     
     public void display()
     {      
+        Platform.runLater(() -> Alert.display("Security", "Warning: It is not recommended to use your in-game password!"));
+        
         newAccountStage = new Stage();
         newAccountStage.setTitle("Create a New Account");
  
@@ -83,7 +87,6 @@ public class NewAccountStage
         usernameInput.setPromptText("Username");
         
         passwordField = new PasswordField();
-        passwordField.setOnMouseClicked(e -> Platform.runLater(() -> Alert.display("Security", "Warning: It is not recommended to use your in-game password!")));
         passwordField.setPromptText("Password");
         
         confPasswordField = new PasswordField();
@@ -104,7 +107,7 @@ public class NewAccountStage
         timezoneDropdown.setPromptText("Select or Type Here");
         
         chooseButton = new Button("Choose...");
-        chooseButton.setOnAction(e -> getAvatar());
+        chooseButton.setOnAction(e -> userImageFile = getAvatar());
         
         createButton = new Button("Create");
         createButton.setOnAction(e -> submit());
@@ -172,7 +175,8 @@ public class NewAccountStage
     {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Choose an Avatar");
-        chooser.getExtensionFilters().addAll(new ExtensionFilter("PNG Image", "*.png"));
+        chooser.getExtensionFilters().addAll(new ExtensionFilter("PNG Image", "*.png"),
+                new ExtensionFilter("JPEG Image", "*.jpg"));
         
         File avatar = chooser.showOpenDialog(null);
         
@@ -274,7 +278,8 @@ public class NewAccountStage
                     getFirstName(), 
                     getLastName(), 
                     getIgn(), 
-                    getTimezone());
+                    getTimezone(),
+                    userImageFile);
             
             submitNewAccount(newAccountInfo);
         }

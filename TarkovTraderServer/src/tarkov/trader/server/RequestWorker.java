@@ -239,9 +239,12 @@ public class RequestWorker implements Runnable {
        if (dbWorker.loginAuthenticated(login))
        {
             HashMap<String,String> clientInfo = dbWorker.getAuthenticatedClientInfo(login);
+            File userImageFile = dbWorker.getUserImageFile(login.getUsername());
+            
             login.setAuthenticationState(true);
             login.setIgn(clientInfo.get("ign"));
             login.setTimezone(clientInfo.get("timezone"));
+            login.setUserImageFile(userImageFile);
                     
             if (sendForm(login)) 
             {

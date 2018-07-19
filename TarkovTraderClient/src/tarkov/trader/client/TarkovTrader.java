@@ -1,5 +1,6 @@
 package tarkov.trader.client;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import javafx.application.Application;
@@ -61,6 +62,7 @@ public class TarkovTrader extends Application {
     public static String username;
     public static String ign;
     public static String timezone;
+    public static File userImageFile;
     public static boolean connected;
     public static volatile boolean authenticated;
     // End logical variable declarations
@@ -95,13 +97,8 @@ public class TarkovTrader extends Application {
     
     
     public void drawMainUI()
-    {
-        // NOTE: Avatar image must be 128x128 size
-        // NOTE: BorderPane is main layout for UI
-        
-        primaryStage.setOnCloseRequest(e -> this.close());
-
-        // Load all images and initialize ImageViews
+    {   
+         // Load all images and initialize ImageViews
         loadResources();
         
         
@@ -127,12 +124,12 @@ public class TarkovTrader extends Application {
         HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
         upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
         upperDisplayRight.getChildren().add(Resources.outlineLogoViewer);
-        //HBox.setMargin(Resources.outlineLogoViewer, new Insets(10,10,10,350)); // This allows the logo to be pushed to the far right in the upper display
         
         
         // Building upper display for avatar image, username, and HBox for logo
-        HBox upperDisplay = new HBox();
+        HBox upperDisplay = new HBox(20);
         upperDisplay.setAlignment(Pos.CENTER); // This allows the username text label to be placed in between the top and bottom of the upper display HBox
+        upperDisplay.setPadding(new Insets(10,0,10,10));
         upperDisplay.getStyleClass().add("hbox");
         upperDisplay.getChildren().addAll(avatarViewer, usernameDisplay, upperDisplayRight);
         
@@ -236,7 +233,7 @@ public class TarkovTrader extends Application {
         // In the main UI, the only resource to be loaded so far is the avatar (unique to each account)
         // All other resources are generic and can be loaded at launch in the Resources class 'load' method
                    
-        avatar = new Image(this.getClass().getResourceAsStream("/testavatar.png"));
+        avatar = new Image(TarkovTrader.userImageFile.toURI().toString(), 128, 128, true, true);
         avatarViewer = new ImageView(avatar); 
     }
     

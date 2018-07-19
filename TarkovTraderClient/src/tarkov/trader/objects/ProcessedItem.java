@@ -70,8 +70,15 @@ public class ProcessedItem {
     
     public ImageView getUserItemImage()
     {
-        Image userImage = new Image(item.getImageFile().toURI().toString());
-        ImageView userItemImage = new ImageView(userImage);
+        if (item.getImageFile() == null)
+        {
+            // No image was uploaded with the post, use generic client-side image
+        }
+        
+        Image userImage = new Image(item.getImageFile().toURI().toString(), 180, 180, true, true);
+        ImageView userItemImage = new ImageView();
+        userItemImage.setPreserveRatio(false);
+        userItemImage.setImage(userImage);
         return userItemImage;
     }
     
@@ -130,6 +137,9 @@ public class ProcessedItem {
     
     public String getNotes()
     {
+        if (item.getNotes().equals(""))
+            return "No notes.";
+        
         return item.getNotes();
     }
     
@@ -138,9 +148,16 @@ public class ProcessedItem {
     {
         return item.getDealStatus();
     }
+    
         
     public int getItemId()
     {
         return item.getItemId();
+    }
+    
+    
+    public String getDate()
+    {
+        return item.getDate();
     }
 }

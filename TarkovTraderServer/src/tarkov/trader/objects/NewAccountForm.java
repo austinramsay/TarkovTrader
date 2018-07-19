@@ -1,6 +1,8 @@
 
 package tarkov.trader.objects;
 
+import java.io.File;
+
 /**
  *
  * @author austin
@@ -15,9 +17,10 @@ public class NewAccountForm extends Form {
     private String lastName;
     private String ign;
     private String timezone;
+    private File userImageFile;
     
     
-    public NewAccountForm(String username, String hashedPassword, byte[] salt, String firstName, String lastName, String ign, String timezone)
+    public NewAccountForm(String username, String hashedPassword, byte[] salt, String firstName, String lastName, String ign, String timezone, File userImageFile)
     {
         this.type = "newaccount";
         this.username = username;
@@ -27,6 +30,7 @@ public class NewAccountForm extends Form {
         this.lastName = lastName;
         this.ign = ign;
         this.timezone = timezone;
+        this.userImageFile = userImageFile;
     }
     
     
@@ -69,5 +73,11 @@ public class NewAccountForm extends Form {
     public String getTimezone()
     {
         return timezone;
+    }
+    
+    
+    public File getUserImageFile()
+    {
+        return userImageFile;
     }
 }

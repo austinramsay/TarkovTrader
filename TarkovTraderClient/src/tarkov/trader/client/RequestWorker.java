@@ -140,6 +140,7 @@ public class RequestWorker implements Runnable
                 TarkovTrader.username = unpackedLogin.getUsername();
                 TarkovTrader.ign = unpackedLogin.getIgn();
                 TarkovTrader.timezone = unpackedLogin.getTimezone();
+                TarkovTrader.userImageFile = unpackedLogin.getUserImageFile();
                 LoginPrompt.acknowledged = true;
                 break;
                 

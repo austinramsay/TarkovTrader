@@ -80,18 +80,35 @@ public class AddItemStage {
         addItemStage = new Stage();
         
         postTypeLabel = new Label("Listing type:");
+        
         itemTypeLabel = new Label("Type of item:");
+        
         itemNameLabel = new Label("Name of item:");
+        
         priceLabel = new Label("Price:");
+        
         ignLabel = new Label(TarkovTrader.ign);
+        ignLabel.setStyle("-fx-font-weight: normal;");
+        
         ignLabelFinal = new Label("Your IGN:");
+        
         usernameLabel = new Label(TarkovTrader.username);
+        usernameLabel.setStyle("-fx-font-weight: normal;");
+        
         usernameLabelFinal = new Label("Trader username:");
+        
         timezoneLabelFinal = new Label("Timezone:");
+        
         timezoneLabel = new Label(TarkovTrader.timezone);
+        timezoneLabel.setStyle("-fx-font-weight: normal;");
+        
         keywordsLabel = new Label("Search Keywords:");
+        
         imageLabel = new Label("Image:");
+        
         selectedImageLabel = new Label("No image chosen.");
+        selectedImageLabel.setStyle("-fx-font-weight: normal;");
+        
         notesLabel = new Label("Notes:");
         
         postTypeDropdown = new ChoiceBox<>();
@@ -119,7 +136,7 @@ public class AddItemStage {
         notesInput.setWrapText(true);
         
         chooseImage = new Button("Choose...");
-        chooseImage.setOnAction(e -> getImage());
+        chooseImage.setOnAction(e -> itemImageFile = getImage());
         
         create = new Button("Create");
         create.setOnAction(e -> submit());
@@ -163,10 +180,29 @@ public class AddItemStage {
         // GridPane displays input fields and labels
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(10, 10, 10, 10));
-        grid.setVgap(10); // Sets the vertical gap between grid cells
-        grid.setHgap(10); // Sets the horizontal gap between grid cells
-        grid.getChildren().addAll(postTypeLabel, itemTypeLabel, itemNameLabel, itemNameInput, priceLabel, ignLabelFinal, usernameLabelFinal, timezoneLabelFinal, keywordsLabel, imageLabel, notesLabel, postTypeDropdown, itemTypeDropdown, priceInput,
-                ignLabel, usernameLabel, timezoneLabel, keywordsInput, selectedImageLabel, chooseImage, notesInput);
+        grid.setVgap(15); // Sets the vertical gap between grid cells
+        grid.setHgap(15); // Sets the horizontal gap between grid cells
+        grid.getChildren().addAll(postTypeLabel, 
+                itemTypeLabel, 
+                itemNameLabel, 
+                itemNameInput, 
+                priceLabel, 
+                ignLabelFinal, 
+                usernameLabelFinal, 
+                timezoneLabelFinal,
+                keywordsLabel, 
+                imageLabel, 
+                notesLabel, 
+                postTypeDropdown, 
+                itemTypeDropdown, 
+                priceInput,
+                ignLabel,
+                usernameLabel, 
+                timezoneLabel, 
+                keywordsInput, 
+                selectedImageLabel, 
+                chooseImage, 
+                notesInput);
         
         
         // Displays 'Create' and 'Cancel' buttons
@@ -211,7 +247,8 @@ public class AddItemStage {
     {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Choose an Avatar");
-        chooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("PNG Image", "*.png"));
+        chooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("PNG Image", "*.png"),
+                new FileChooser.ExtensionFilter("JPEG Image", "*.jpg"));
         
         File avatar = chooser.showOpenDialog(null);
         
@@ -233,7 +270,6 @@ public class AddItemStage {
         // This method gets the text fields and applies them to the corresponding Strings to be prepared for a new item entry
         // Each field will be checked for integrity
         
-        itemImageFile = null;
         postType = postTypeDropdown.getSelectionModel().getSelectedItem();
         itemType = itemTypeDropdown.getSelectionModel().getSelectedItem();
         itemName = itemNameInput.getText();

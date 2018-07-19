@@ -18,6 +18,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -86,12 +87,12 @@ public class Browser {
         
         // Build 'Item Browser' label displayed on top left
         browserLabel = new Label("Item Browser");  // Could use a graphics label instead at some point
-        browserLabel.getStyleClass().add("browserLabel");
+        browserLabel.getStyleClass().add("windowLabel");
         
         // Build 'Filters:' label displayed on top of filter selection VBox
         filterLabel = new Label("Filters:");
         filterLabel.setPadding(new Insets(20,0,0,0));  // Needed a small extra push downward
-        filterLabel.getStyleClass().add("filterLabel");
+        filterLabel.getStyleClass().add("subWindowLabel");
         
         
         // Note: The options in these filter lists directly affect the performance of requesting an item list
@@ -191,8 +192,10 @@ public class Browser {
         
         table = new TableView<>();
         table.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, ignColumn, timezoneColumn);
-        // End building TableView
         
+        table.setOnMousePressed(e -> displaySelectedItem(e));  // Checks for 2 mouse clicks and opens new window with item information using ProcessedItem object
+        // End building TableView
+ 
         
         // Border pane layout: Uses top, left, and center sections
         BorderPane border = new BorderPane();
@@ -234,6 +237,15 @@ public class Browser {
         }
         
         browser.show();
+    }
+    
+    
+    private void displaySelectedItem(MouseEvent e)
+    {
+        if (e.getClickCount() == 2)
+        {
+            ItemDisplay itemdisplay = new ItemDisplay((ProcessedItem)table.getSelectionModel().getSelectedItem());
+        }
     }
     
     
