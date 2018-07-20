@@ -45,7 +45,7 @@ public class Browser {
     private Button returnButton;
     private TableView table;
     private MenuBar menubar;
-    private Menu newSearch;
+    private Menu newSearchMenu;
     private ComboBox<String> typeFilter;
     private ComboBox<String> tradeStatusFilter;
     private ComboBox<String> priceRangeFilter;
@@ -61,7 +61,7 @@ public class Browser {
     private HashMap<String, String> searchFlags;   // This should only be used for a direct search called by the search feature. It should be set using 'setSearchFlags' prior to calling 'display(true)'
     
     private boolean isPopulated;
-    private boolean pullSearchFlags = false;
+    private boolean pullSearchFlags;
     
     
     public Browser(TarkovTrader trader, RequestWorker worker)
@@ -82,8 +82,9 @@ public class Browser {
         
         // Build MenuBar
         menubar = new MenuBar();
-        newSearch = new Menu("Start a New Search");  // TODO: Implement setOnAction when search feature is implemented
-        menubar.getMenus().addAll(newSearch);
+        newSearchMenu = new Menu("Start a New Search");
+        newSearchMenu.setOnAction(e -> startSearch());
+        menubar.getMenus().addAll(newSearchMenu);
         
         // Build 'Item Browser' label displayed on top left
         browserLabel = new Label("Item Browser");  // Could use a graphics label instead at some point
@@ -100,27 +101,27 @@ public class Browser {
         tradeStatusFilter = new ComboBox<>();
         tradeStatusFilter.setPromptText("Trade Status");
         tradeStatusFilter.getItems().addAll("All", "WTS", "WTB");
-        tradeStatusFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
+        tradeStatusFilter.setOnAction(e -> requestItemList());
         
       
         // Note: Filter list. See note above
         typeFilter = new ComboBox<>();
         typeFilter.setPromptText("Item Type");
         typeFilter.getItems().addAll("All", "Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
-        typeFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
+        typeFilter.setOnAction(e -> requestItemList());
 
         
         // Note: Filter list. See note above
         priceRangeFilter = new ComboBox<>();
         priceRangeFilter.setPromptText("Price Range");
         priceRangeFilter.getItems().addAll("All", "1 - 50,000", "50,000 - 100,000", "100,000 - 200,000", "200,000 - 300,000", "300,000+");
-        priceRangeFilter.setOnAction(e -> requestItemList(buildFilterFlags()));
+        priceRangeFilter.setOnAction(e -> requestItemList());
         
         
         // Build buttons on bottom of filter selection VBox
         refreshButton = new Button("Refresh");
         refreshButton.setGraphic(Resources.refreshIconViewer);
-        refreshButton.setOnAction(e -> requestItemList(buildFilterFlags()));
+        refreshButton.setOnAction(e -> requestItemList());
         
         returnButton = new Button("Return");
         returnButton.setGraphic(Resources.cancelIconViewer);
@@ -220,7 +221,8 @@ public class Browser {
             tradeStatusFilter.setDisable(true);
             typeFilter.setDisable(true);
             priceRangeFilter.setDisable(true);
-            if(requestItemList(getSearchFlags()))
+            
+            if(requestItemList())
                 this.isPopulated = true;
             else
                 this.isPopulated = false;
@@ -232,7 +234,8 @@ public class Browser {
             tradeStatusFilter.setDisable(false);
             typeFilter.setDisable(false);
             priceRangeFilter.setDisable(false);
-            if (requestItemList(buildFilterFlags()))
+            
+            if (requestItemList())
                 this.isPopulated = true;
         }
         
@@ -260,21 +263,21 @@ public class Browser {
     {
         return FXCollections.observableArrayList(itemList);
     }
+
     
-    
-    private void submitRequest()
+    private boolean requestItemList()
     {
-        if (pullSearchFlags)
-            requestItemList(getSearchFlags());
-        else
-            requestItemList(buildFilterFlags());
-    }
-    
-    
-    private boolean requestItemList(HashMap<String, String> flagMap)
-    {
-        ItemListForm listrequest = new ItemListForm(flagMap);
+        ItemListForm listrequest;
         
+        if (pullSearchFlags)
+        {
+            listrequest = new ItemListForm(getSearchFlags());
+        }
+        else
+        {
+            listrequest = new ItemListForm(buildFilterFlags());
+        }
+
         // use worker to send, wait for server response, table will populate upon receiving list
         if (!worker.sendForm(listrequest))
         {
@@ -399,6 +402,14 @@ public class Browser {
     private HashMap<String, String> getSearchFlags()
     {
         return this.searchFlags;
+    }
+    
+    
+    private void startSearch()
+    {
+        browser.close();
+        NewSearch newSearch = new NewSearch(trader, this);
+        newSearch.display();
     }
     
     

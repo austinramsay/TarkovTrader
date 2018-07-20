@@ -192,8 +192,9 @@ public class ItemDisplay {
         
         // Center display: Upper section to house item image and 'Item Name'
         HBox centerUpperDisplay = new HBox();
-        centerUpperDisplay.setMaxHeight(180);
-        centerUpperDisplay.setMinHeight(180);
+        centerUpperDisplay.setPadding(new Insets(10, 0, 0, 0));
+        /*centerUpperDisplay.setMaxHeight(180);
+        centerUpperDisplay.setMinHeight(180);*/
         centerUpperDisplay.setAlignment(Pos.CENTER);
         
         HBox centerUpperRightDisplay = new HBox();

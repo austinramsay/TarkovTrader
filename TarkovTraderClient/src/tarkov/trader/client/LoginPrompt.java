@@ -91,7 +91,7 @@ public class LoginPrompt {
         border.setTop(upperDisplay);
         border.setCenter(grid);
         border.setBottom(lowerDisplay);
-
+        
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         loginStage.setOnCloseRequest(e -> this.close());

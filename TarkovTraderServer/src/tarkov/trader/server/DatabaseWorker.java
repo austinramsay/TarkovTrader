@@ -520,22 +520,34 @@ public class DatabaseWorker
             communicator.sendAlert(error);
             return null;
         }
+        catch (NumberFormatException e)
+        {
+            System.out.println("DBWorker: Number format exception parsing price flag.");
+            return null;
+        }
     }
     
     
     private ArrayList<Item> packItems(ResultSet matchingItemResults) throws SQLException
     {
         // Pack all results into the 'Item's ArrayList 
-        
         ArrayList<Item> matchingItemList = new ArrayList();
         
-        while (matchingItemResults.next())
+        try 
         {
-            byte[] blobObject = matchingItemResults.getBytes("ItemObject");
-            matchingItemList.add((Item)convertBlobToObject(blobObject));
+            while (matchingItemResults.next())
+            {
+                byte[] blobObject = matchingItemResults.getBytes("ItemObject");
+                matchingItemList.add((Item)convertBlobToObject(blobObject));
+            }
+            return matchingItemList;
+        }
+        catch (NullPointerException e)
+        {
+            communicator.sendAlert("No results found!");
+            return null;
         }
         
-        return matchingItemList;
     }
     
     

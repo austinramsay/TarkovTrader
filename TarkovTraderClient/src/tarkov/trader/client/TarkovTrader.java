@@ -1,8 +1,6 @@
 package tarkov.trader.client;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -35,6 +33,7 @@ public class TarkovTrader extends Application {
     public LoginPrompt mainLogin;
     private Browser browser;
     private AddItemStage addItemStage;
+    private NewSearch newSearch;
     private Thread workerThread;
     
     // JavaFX variable declarations
@@ -166,6 +165,7 @@ public class TarkovTrader extends Application {
         logoutButton.setOnAction(e -> close());
         browseButton.setOnAction(e -> displayBrowser());
         addItemButton.setOnAction(e -> displayAddItemStage());
+        searchButton.setOnAction(e -> displayNewSearch());
         
         
         // Building left display
@@ -228,13 +228,25 @@ public class TarkovTrader extends Application {
     }
     
     
+    private void displayNewSearch()
+    {
+        browser = new Browser(this, worker);
+        newSearch = new NewSearch(this, browser);
+        newSearch.display();
+        primaryStage.close();
+    }
+    
+    
     private void loadResources()
     {
         // In the main UI, the only resource to be loaded so far is the avatar (unique to each account)
         // All other resources are generic and can be loaded at launch in the Resources class 'load' method
                    
-        avatar = new Image(TarkovTrader.userImageFile.toURI().toString(), 128, 128, true, true);
+        avatar = new Image(TarkovTrader.userImageFile.toURI().toString());
         avatarViewer = new ImageView(avatar); 
+        avatarViewer.setPreserveRatio(false);
+        avatarViewer.setFitHeight(128);
+        avatarViewer.setFitWidth(180);
     }
     
     
@@ -249,6 +261,12 @@ public class TarkovTrader extends Application {
     public Browser getBrowser()
     {
         return this.browser;
+    }
+    
+    
+    public RequestWorker getWorker()
+    {
+        return this.worker;
     }
     
     

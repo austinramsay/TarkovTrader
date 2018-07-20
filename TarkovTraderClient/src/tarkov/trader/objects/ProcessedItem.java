@@ -73,13 +73,29 @@ public class ProcessedItem {
         if (item.getImageFile() == null)
         {
             // No image was uploaded with the post, use generic client-side image
+            return null;
         }
         
-        Image userImage = new Image(item.getImageFile().toURI().toString(), 180, 180, true, true);
-        ImageView userItemImage = new ImageView();
-        userItemImage.setPreserveRatio(false);
-        userItemImage.setImage(userImage);
+        Image userImage = new Image(item.getImageFile().toURI().toString());
+        
+        ImageView userItemImage = new ImageView(userImage);
+        userItemImage.setPreserveRatio(true);
+        userItemImage.setSmooth(true);
+        userItemImage.setFitWidth(300);  // Try to fit the image to a 300 width, but maintain a height lower than 220 by using method below
+        
+        while (projectedHeight(userImage, userItemImage) > 220)   // Calculate the projected height or the image by calculating the requested width divided by the (original width/original height)
+        {
+            userItemImage.setFitWidth(userItemImage.getFitWidth() - 1);   // Lower the fit width if the images ratio can't be preserved according to the requested width
+        }
+        
         return userItemImage;
+    }
+    
+    
+    private double projectedHeight(Image userImage, ImageView userItemImage)
+    {
+        double height = (userItemImage.getFitWidth() / (userImage.getWidth() / userImage.getHeight()));
+        return height;
     }
     
     
@@ -138,7 +154,7 @@ public class ProcessedItem {
     public String getNotes()
     {
         if (item.getNotes().equals(""))
-            return "No notes.";
+            return "No seller notes.";
         
         return item.getNotes();
     }
