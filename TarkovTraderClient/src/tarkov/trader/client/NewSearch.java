@@ -6,7 +6,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -237,13 +236,13 @@ public class NewSearch {
             priceMax = "50000000";
         
         
-        if (postTypeDropdown.getSelectionModel().isEmpty())
+        if (postTypeDropdown.getSelectionModel().isEmpty() || postTypeDropdown.getSelectionModel().getSelectedIndex() == 0)
             definedStatusFlag = "%";
         else
             definedStatusFlag = postTypeDropdown.getSelectionModel().getSelectedItem();
         
         
-        if (itemTypeDropdown.getSelectionModel().isEmpty())
+        if (itemTypeDropdown.getSelectionModel().isEmpty() || itemTypeDropdown.getSelectionModel().getSelectedIndex() == 0)
             definedTypeFlag = "%";
         else
             definedTypeFlag = itemTypeDropdown.getSelectionModel().getSelectedItem();

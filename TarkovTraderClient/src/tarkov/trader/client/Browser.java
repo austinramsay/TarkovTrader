@@ -78,7 +78,6 @@ public class Browser {
         this.pullSearchFlags = pullSearchFlags;
         
         browser = new Stage();
-        browser.setOnCloseRequest(e -> close());  // For now, only closes the browser stage and reopens the main trader user interface
         
         // Build MenuBar
         menubar = new MenuBar();
@@ -210,6 +209,7 @@ public class Browser {
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         browser.setTitle("Item Browser");
         browser.getIcons().add(Resources.icon);
+        browser.setOnCloseRequest(e -> close());  // For now, only closes the browser stage and reopens the main trader user interface
         browser.setResizable(false);
         browser.setScene(scene);
         
@@ -254,6 +254,7 @@ public class Browser {
     
     public void populate(ArrayList<ProcessedItem> itemList)
     {
+        // Called by RequestWorker and passed the ArrayList to process 
         // Calls getItemList to retrieve an OberservableList of processed items for CellValueFactory to fetch data
         table.setItems(getItemList(itemList));
     }
@@ -297,11 +298,10 @@ public class Browser {
         
         String statusFlag;
         String typeFlag;
-        String priceFlag;
+        int priceFlag;
  
         String definedStatusFlag;
         String definedTypeFlag;
-        String definedPriceFlag;
         
         String priceMin;
         String priceMax;
@@ -320,9 +320,9 @@ public class Browser {
         
         
         if (priceRangeFilter.getSelectionModel().isEmpty())
-            priceFlag = "All";
+            priceFlag = 0;
         else 
-            priceFlag = priceRangeFilter.getSelectionModel().getSelectedItem();
+            priceFlag = priceRangeFilter.getSelectionModel().getSelectedIndex();
 
         
         switch(statusFlag)
@@ -333,7 +333,7 @@ public class Browser {
                 break;
             case "WTB":
                 definedStatusFlag = "WTB";
-                priceFlag = "All";
+                priceFlag = 0;
                 priceRangeFilter.setDisable(true);
                 break;
             default:
@@ -356,19 +356,19 @@ public class Browser {
         
         switch(priceFlag)
         {
-            case "1 - 50,000":
+            case 1:
                 priceMin = "1";
                 priceMax = "50000";
                 break;
-            case "50,000 - 100,000":
+            case 2:
                 priceMin = "50000";
                 priceMax = "100000";
                 break;
-            case "100,000 - 200,000":
+            case 3:
                 priceMin = "100000";
                 priceMax = "200000";
                 break;
-            case "200,000 - 300,000":
+            case 4:
                 priceMin = "200000";
                 priceMax = "300000";
                 break;

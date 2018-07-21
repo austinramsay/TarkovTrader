@@ -34,6 +34,7 @@ public class TarkovTrader extends Application {
     private Browser browser;
     private AddItemStage addItemStage;
     private NewSearch newSearch;
+    private Messenger messenger;
     private Thread workerThread;
     
     // JavaFX variable declarations
@@ -166,6 +167,7 @@ public class TarkovTrader extends Application {
         browseButton.setOnAction(e -> displayBrowser());
         addItemButton.setOnAction(e -> displayAddItemStage());
         searchButton.setOnAction(e -> displayNewSearch());
+        messageButton.setOnAction(e -> displayMessenger());
         
         
         // Building left display
@@ -237,12 +239,23 @@ public class TarkovTrader extends Application {
     }
     
     
+    private void displayMessenger()
+    {
+        messenger = new Messenger();
+        messenger.display();
+    }
+    
+    
     private void loadResources()
     {
         // In the main UI, the only resource to be loaded so far is the avatar (unique to each account)
         // All other resources are generic and can be loaded at launch in the Resources class 'load' method
-                   
-        avatar = new Image(TarkovTrader.userImageFile.toURI().toString());
+        
+        if (TarkovTrader.userImageFile != null)
+            avatar = new Image(TarkovTrader.userImageFile.toURI().toString());
+        else
+            avatar = new Image(this.getClass().getResourceAsStream("/eftlogo.jpg"));
+        
         avatarViewer = new ImageView(avatar); 
         avatarViewer.setPreserveRatio(false);
         avatarViewer.setFitHeight(128);

@@ -194,3 +194,7 @@
     -fx-background-radius: 2em;
     -fx-background-insets: 2, 0, 0;
 }
+
+.list-view {
+    -fx-background-color: #383838;
+}

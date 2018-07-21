@@ -55,6 +55,7 @@ public class NewAccountStage
     private ComboBox timezoneDropdown;
     
     private boolean passwordMatch = false;
+    private final String noAvatarMessage = "No avatar chosen.\nA default will be used.";
     private File userImageFile;
     
     
@@ -67,7 +68,7 @@ public class NewAccountStage
     
     public void display()
     {      
-        Platform.runLater(() -> Alert.display("Security", "Warning: It is not recommended to use your in-game password!"));
+        Platform.runLater(() -> Alert.displayNotification(null, "Warning: It is not recommended to use your in-game password!", 7));
         
         newAccountStage = new Stage();
         newAccountStage.setTitle("Create a New Account");
@@ -81,7 +82,9 @@ public class NewAccountStage
         ignLabel = new Label("In-game name:");
         timezoneLabel = new Label("Timezone:");
         imageLabel = new Label("Avatar:");
-        selectedAvatarLabel = new Label("No avatar chosen.");
+        
+        selectedAvatarLabel = new Label(noAvatarMessage);
+        selectedAvatarLabel.setWrapText(true);
         
         usernameInput = new TextField();
         usernameInput.setPromptText("Username");
@@ -145,8 +148,24 @@ public class NewAccountStage
         grid.setPadding(new Insets(10, 10, 10, 10));
         grid.setVgap(8); // Sets the vertical gap between grid cells
         grid.setHgap(10); // Sets the horizontal gap between grid cells
-        grid.getChildren().addAll(nameLabel,passLabel,confPassLabel,firstNameLabel,lastNameLabel,ignLabel,imageLabel,usernameInput,passwordField,confPasswordField,firstNameInput,lastNameInput,ignInput, chooseButton, 
-                selectedAvatarLabel, timezoneLabel, timezoneDropdown);
+        grid.getChildren().addAll(
+                nameLabel,
+                passLabel,
+                confPassLabel,
+                firstNameLabel,
+                lastNameLabel,
+                ignLabel,
+                imageLabel,
+                usernameInput,
+                passwordField,
+                confPasswordField,
+                firstNameInput,
+                lastNameInput,
+                ignInput, 
+                chooseButton, 
+                selectedAvatarLabel, 
+                timezoneLabel, 
+                timezoneDropdown);
         
         
         // Displays 'Create' and 'Cancel' buttons
@@ -175,7 +194,8 @@ public class NewAccountStage
     {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Choose an Avatar");
-        chooser.getExtensionFilters().addAll(new ExtensionFilter("PNG Image", "*.png"),
+        chooser.getExtensionFilters().addAll(
+                new ExtensionFilter("PNG Image", "*.png"),
                 new ExtensionFilter("JPEG Image", "*.jpg"));
         
         File avatar = chooser.showOpenDialog(null);
@@ -187,7 +207,7 @@ public class NewAccountStage
         }
         else 
         {
-            selectedAvatarLabel.setText("No avatar chosen.");
+            selectedAvatarLabel.setText(noAvatarMessage);
             return null;
         }
     }
@@ -247,11 +267,14 @@ public class NewAccountStage
             return false;
         if (getTimezone() == null || getTimezone().equals("") || !isBetween(getTimezone().length(), 2, 12))
             return false;
+        
         if (!getConfPassword().equals(getPassword()))
         {
             passwordMatch = false;
             return true;
         }
+
+        
         else
             return true;
     }
@@ -286,7 +309,7 @@ public class NewAccountStage
         else
         {
             if (passwordMatch)
-                Alert.display("Check Values", "Make sure fields are between 3 and 24 characters. Password must be minimum 6 characters.. Timezone must be 3 to 12 characters.");
+                Alert.display("Check Values", "Make sure fields are between 3 and 24 characters. Password must be minimum 6 characters. Timezone must be 3 to 12 characters.");
             else 
             {
                 Alert.display("Confirm Password", "Passwords do not match!");

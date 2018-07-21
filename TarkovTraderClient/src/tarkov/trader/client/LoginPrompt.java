@@ -65,34 +65,39 @@ public class LoginPrompt {
         newAccountButton.setOnAction(e -> launchNewAccountStage());
         
         
-        
+        // upperdisplay houses Tarkov Trader logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);
         upperDisplay.getChildren().add(Resources.logoViewer);
         
+        
+        // Grid construction for labels and input fields
         GridPane.setConstraints(nameLabel, 0, 0);
         GridPane.setConstraints(passLabel, 0, 1);
         GridPane.setConstraints(usernameInput, 1, 0);
         GridPane.setConstraints(passwordInput, 1, 1);
         
-        HBox lowerDisplay = new HBox(10); // Horizontal box on the last row of the gridpane to center the login button
+        GridPane grid = new GridPane();       
+        grid.setVgap(8); 
+        grid.setHgap(10); 
+        grid.setAlignment(Pos.CENTER);
+        grid.getChildren().addAll(nameLabel, passLabel, usernameInput, passwordInput);
+        // End grid
+        
+        
+        // lowerdisplay houses the 3 buttons on the bottom of the login prompt
+        HBox lowerDisplay = new HBox(10); 
         lowerDisplay.setAlignment(Pos.CENTER);
         lowerDisplay.getChildren().addAll(loginButton, newAccountButton, cancelButton);
-        BorderPane.setMargin(lowerDisplay, new Insets(5,0,0,0));
         
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(10, 10, 10, 10));          
-        grid.setVgap(8); // Sets the vertical gap between grid cells
-        grid.setHgap(10); // Sets the horizontal gap between grid cells
-        grid.getChildren().addAll(nameLabel, passLabel, usernameInput, passwordInput);
         
-        BorderPane border = new BorderPane();
-        border.setPadding(new Insets(20, 20, 20, 20));
-        border.setTop(upperDisplay);
-        border.setCenter(grid);
-        border.setBottom(lowerDisplay);
+        // Main scene layout is VBox with 12 spacing and 20 padding all around
+        VBox layout = new VBox(12);
+        layout.setPadding(new Insets(20));
+        layout.getChildren().addAll(upperDisplay, grid, lowerDisplay);
         
-        Scene scene = new Scene(border);
+        
+        Scene scene = new Scene(layout);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         loginStage.setOnCloseRequest(e -> this.close());
         loginStage.setTitle("Tarkov Trader Login");
