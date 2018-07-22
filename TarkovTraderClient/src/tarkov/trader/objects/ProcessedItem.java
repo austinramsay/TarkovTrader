@@ -70,13 +70,17 @@ public class ProcessedItem {
     
     public ImageView getUserItemImage()
     {
+        Image userImage;
+        
         if (item.getImageFile() == null)
         {
             // No image was uploaded with the post, use generic client-side image
-            return null;
+            userImage = getGenericImage(this.getItemType());
         }
-        
-        Image userImage = new Image(item.getImageFile().toURI().toString());
+        else
+        {
+            userImage = new Image(item.getImageFile().toURI().toString());
+        }
         
         ImageView userItemImage = new ImageView(userImage);
         userItemImage.setPreserveRatio(true);
@@ -98,6 +102,42 @@ public class ProcessedItem {
         return height;
     }
     
+    
+    private Image getGenericImage(String type)
+    {
+        String imageFlag;
+        
+        switch (type)
+        {
+            case "Secure Container":
+                imageFlag = "/genericsecurecontainer.png";
+                break;
+            case "Key":
+                imageFlag = "/generickey.png";
+                break;
+            case "Weapon":
+                imageFlag = "/genericweapon.png";
+                break;
+            case "Weapon Mod":
+                imageFlag = "/genericweaponmod.png";
+                break;
+            case "Apparel":
+                imageFlag = "/genericapparel.png";
+                break;
+            case "Armor/Helmet":
+                imageFlag = "/genericarmor.png";
+                break;
+            case "Misc":
+                imageFlag = "/genericmisc.png";
+                break;             
+            default:
+                imageFlag = "/generic.png";
+                break;
+        }
+                      
+        return new Image(this.getClass().getResourceAsStream(imageFlag));
+    }
+        
     
     public String getTradeState()
     {

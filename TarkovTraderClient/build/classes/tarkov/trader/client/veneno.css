@@ -195,6 +195,12 @@
     -fx-background-insets: 2, 0, 0;
 }
 
-.list-view {
+.list-view, .list-cell {
     -fx-background-color: #383838;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.list-cell:selected {
+    -fx-background-color: black;
 }

@@ -93,7 +93,7 @@ public class LoginPrompt {
         
         // Main scene layout is VBox with 12 spacing and 20 padding all around
         VBox layout = new VBox(12);
-        layout.setPadding(new Insets(20));
+        layout.setPadding(new Insets(0,0,10,0));
         layout.getChildren().addAll(upperDisplay, grid, lowerDisplay);
         
         

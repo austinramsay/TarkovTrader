@@ -225,7 +225,6 @@ public class ItemDisplay {
         
         // Left grid construction
         GridPane leftGrid = new GridPane();
-        //leftGrid.setPadding(new Insets(0,0,0,0));
         leftGrid.setVgap(20);
         leftGrid.setHgap(20);
         leftGrid.getChildren().addAll(
@@ -274,7 +273,6 @@ public class ItemDisplay {
         
         
         // Now that the border is built, we can expand the notes area across the bottom 
-        //notesArea.setPadding(new Insets(20,0,0,0));
         notesArea.setPrefWidth(border.getWidth());
         notesArea.setPrefHeight(100);
         

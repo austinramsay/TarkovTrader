@@ -10,10 +10,12 @@ import java.util.ArrayList;
 
 public class Chat {
     
+    
     private boolean isNew;
-    private String origin;
-    private String destination;
-    private ArrayList<String> messages;
+    private String origin;   // This string will be a client's username that initiated the chat
+    private String destination;   // This string will be a client's username receiving the new chat
+    private ArrayList<String> messages;   // The arraylist will hold strings of messages between clients
+    
     
     public Chat(String origin, String destination, ArrayList<String> messages)
     {
@@ -22,7 +24,7 @@ public class Chat {
         this.destination = destination;
         this.messages = messages;
     }
-   
+    
     
     // Getters:
     public String getOrigin()
@@ -45,7 +47,7 @@ public class Chat {
     
     
     // Setters:
-    public void setOpened()
+    public void setOpened()   // Server calls this upon receiving and recognizing the chat is 'new'
     {
         this.isNew = false;
     }
