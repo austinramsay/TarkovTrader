@@ -5,10 +5,10 @@ import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
 import javafx.application.Platform;
-import tarkov.trader.objects.Chat;
 import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
+import tarkov.trader.objects.HeartbeatForm;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.ProcessedItem;
@@ -82,7 +82,6 @@ public class RequestWorker implements Runnable
         {
             Platform.runLater(() -> Alert.display("Network", "Connection to server failed."));
         }
-
     }
     
     
@@ -144,7 +143,9 @@ public class RequestWorker implements Runnable
                 TarkovTrader.timezone = unpackedLogin.getTimezone();
                 TarkovTrader.userImageFile = unpackedLogin.getUserImageFile();
                 LoginPrompt.acknowledged = true;
+                
                 break;
+                
                 
             case "itemlist":
                 ItemListForm itemlistform = (ItemListForm)processedRequest;
@@ -154,19 +155,6 @@ public class RequestWorker implements Runnable
                 trader.getBrowser().populate(getProcessedItemList(itemlistform));
                 break;
                 
-            case "chat":
-                // New chat received from server, check if messenger is active else just let messenger pull from server upon opening and display a notification
-                Chat newchat = (Chat)processedRequest;
-                
-                if (Messenger.isOpen)
-                {
-                    trader.getMessenger().chatListView.getItems().add(newchat);
-                    Platform.runLater(() -> Alert.display(null, "New chat from: " + newchat.getOrigin()));
-                }
-                else
-                    Platform.runLater(() -> Alert.display(null, "New chat from: " + newchat.getOrigin()));
-                
-                break;
                 
             case "chatlist":
                 // Client requested a chat list, results were returned from the server, and now we need to populate the messenger list
@@ -179,8 +167,17 @@ public class RequestWorker implements Runnable
                 
                 break;
                 
+                
+            case "heartbeat":
+                // Send back a heartbeat
+                HeartbeatForm heartbeat = (HeartbeatForm)processedRequest;
+                sendForm(heartbeat);
+                
+                break;
+                
+                
             default:
-                Platform.runLater(() -> Alert.display(null, "Received an unknown type of form."));
+                Platform.runLater(() -> Alert.display(null, "Received an unknown type of form: " + processedRequest.getType() + "..."));
                 break;
         }
     }

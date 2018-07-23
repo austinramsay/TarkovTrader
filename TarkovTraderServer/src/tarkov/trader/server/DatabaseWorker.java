@@ -11,8 +11,8 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-import javafx.application.Platform;
 import javax.xml.bind.DatatypeConverter;
+import tarkov.trader.objects.Chat;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.LoginForm;
@@ -81,8 +81,12 @@ public class DatabaseWorker
             statement = dbConnection.prepareStatement(command);
             statement.setString(1, onlyParameter);
             result = statement.executeQuery();
-            result.first();
-            return result.getString(columnName);
+            if (result != null)
+            {
+                result.first();
+                return result.getString(columnName);
+            }
+            return null;
         }
         catch (SQLException e)
         {
@@ -116,8 +120,12 @@ public class DatabaseWorker
             statement = dbConnection.prepareStatement(command);
             statement.setString(1, onlyParameter);
             result = statement.executeQuery();
-            result.first();
-            return result.getBytes(columnName);
+            if (result != null)
+            {
+                result.first();
+                return result.getBytes(columnName);
+            }
+            return null;
         }
         catch (SQLException e)
         {
@@ -228,6 +236,7 @@ public class DatabaseWorker
         
         clientInfo.put("ign", clientIgn);
         clientInfo.put("timezone", clientTimezone);
+        // Add chatmap here?
         
         return clientInfo;
     }
@@ -328,7 +337,11 @@ public class DatabaseWorker
     
     public void insertAccountInfo(NewAccountForm newAccount, String clientIp)
     {        
-        String command = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, image, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        String accountcommand = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, image, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        String chatcommand = "INSERT INTO chats (Username, ChatMap) VALUES (?, ?);";
+        
+        HashMap<String, Chat> newaccountchatmap = new HashMap<>();
+        
         Connection dbConnection = null;
         PreparedStatement statement = null;
         
@@ -336,7 +349,7 @@ public class DatabaseWorker
         {
             dbConnection = this.getDBconnection();
 
-            statement = dbConnection.prepareStatement(command);
+            statement = dbConnection.prepareStatement(accountcommand);
             statement.setString(1, newAccount.getUsername());
             statement.setString(2, this.getHashedPassword(newAccount.getHashedPassword(), newAccount.getSalt()));   // We will receive a one time hashed SHA-512 password. Hash this with the unique salt to store into DB
             statement.setBytes(3, newAccount.getSalt());
@@ -346,6 +359,12 @@ public class DatabaseWorker
             statement.setString(7, newAccount.getTimezone());
             statement.setObject(8, newAccount.getUserImageFile());
             statement.setString(9, clientIp);
+            statement.executeUpdate();
+            
+            statement = null;
+            statement = dbConnection.prepareCall(chatcommand);
+            statement.setString(1, newAccount.getUsername());
+            statement.setObject(2, newaccountchatmap);
             statement.executeUpdate();
             
             System.out.println("DBWorker: New account success from: " + clientIp);
@@ -550,7 +569,69 @@ public class DatabaseWorker
         
     }
     
+    // END item list request section
     
+    
+    
+    /*
+    // Chats: deals with inserting new chats, and pulling chat list requests
+    */
+    
+    // This should only be called on client disconnection
+    public boolean insertChatMap(String username, HashMap<String, Chat> chatmap)
+    {
+        String command = "UPDATE chats SET ChatMap = ? WHERE Username = ?;";
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        
+        try 
+        {
+            dbConnection = getDBconnection();
+            statement = dbConnection.prepareStatement(command);   
+            
+            statement.setObject(1, chatmap);            
+            statement.setString(2, username);
+            
+            statement.executeUpdate();
+            
+            return true;
+        }
+        catch (SQLException e)
+        {
+            String error = "DBWorker: New chat map insert failed. Error: " + e.getMessage();
+            System.out.println(error);
+            communicator.sendAlert(error);
+            return false;
+        }
+        finally 
+        {
+            try {
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after inserting chat map for " + clientIp + "."); }
+        }
+    }
+    
+    
+    // Pull the chatmap upon authenticated user login
+    public HashMap<String, Chat> pullChatMap(String username)
+    {
+        HashMap<String, Chat> chatmap;
+        
+        String command = "SELECT ChatMap FROM chats WHERE Username=?;";
+        
+        chatmap = (HashMap)convertBlobToObject(simpleBlobQuery(command, "ChatMap", username));
+        
+        return chatmap;
+    }
+    
+    
+    //
+    // This method is used to convert blobs back into objects, needed universally throughout the DBWorker
+    //
     private Object convertBlobToObject(byte[] blob)
     {
         Object convertedObject = null;
@@ -590,8 +671,4 @@ public class DatabaseWorker
             }
         }
     }
-    
-    // END item list request section
-    
-    
 }

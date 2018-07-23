@@ -215,9 +215,6 @@ public class LoginPrompt {
     }
     
     
-
-    
-    
     private void close()
     {
         loginStage.close();

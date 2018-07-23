@@ -60,12 +60,12 @@ public class Network implements Runnable {
         System.out.println("Client connection from: " + clientIp);
         
         
+        
         // Client immediately needs a request handler. Once a login or new account is requested, the server must be ready to accept and process
-        // A new 'Client' instance will be initialized by the request handler depending on the user's actions
+        
         RequestWorker clientRW = new RequestWorker(client, clientComm);
         Thread rwClientThread = new Thread(clientRW);
         rwClientThread.start();
-        
     }
     
 }

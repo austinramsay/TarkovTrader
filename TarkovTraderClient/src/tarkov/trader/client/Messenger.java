@@ -23,7 +23,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import tarkov.trader.objects.ChatListForm;
-import tarkov.trader.objects.Form;
 
 /**
  *
@@ -371,8 +370,9 @@ public class Messenger {
         
         if (worker.sendForm(requestchatform))
             return true;
-        else
-            Platform.runLater(() -> Alert.display(null, "Failed to request chat list from server."));
+        
+        
+        Platform.runLater(() -> Alert.display(null, "Failed to request chat list from server."));
         
         requestchatform = null;
         return false;

@@ -4,8 +4,11 @@ package tarkov.trader.server;
 import tarkov.trader.objects.NewAccountForm;
 import java.net.*;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import tarkov.trader.objects.Chat;
+import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
 import tarkov.trader.objects.Item;
@@ -16,17 +19,17 @@ import tarkov.trader.objects.ItemListForm;
 public class RequestWorker implements Runnable {
     
     private DatabaseWorker dbWorker;
-    private ClientCommunicator communicator;
+    public ClientCommunicator communicator;
     
     private Socket client;
     private Socket clientComm;
     private String clientIp;
-    private String clientUsername;
+    public String clientUsername;
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
     private Form form;
     
-    private HashMap<String, Chat> chatMap;  // This will be pulled from DB upon authenticated login
+    private HashMap<String, Chat> chatmap;  // This will be pulled from DB upon authenticated login
     
     public RequestWorker(Socket client, Socket clientComm)
     {
@@ -53,8 +56,8 @@ public class RequestWorker implements Runnable {
         catch (IOException e)
         {
             System.out.println("Client " + clientIp + " has disconnected.");
-            if (TarkovTraderServer.authenticatedUsers.containsKey(clientIp))
-                TarkovTraderServer.authenticatedUsers.remove(clientIp);
+            if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
+                TarkovTraderServer.authenticatedUsers.remove(clientUsername);
             // TODO: HANDLE A CLOSED CONNECTION
         }
         catch (ClassNotFoundException e)
@@ -144,14 +147,22 @@ public class RequestWorker implements Runnable {
                 
                 if (authenticateRequest())
                 {
-                    if (chat.isNew)
-                    {
-                        chat.setOpened();
-                        processNewChat(chat);
-                    }
+                    processChat(chat);
                 }
                 else
                     sendAuthenticationFailure();
+                
+                break;
+                
+                
+            case "chatlist":
+                syncChats();
+                
+                break;
+                
+                
+            case "heartbeat":
+                System.out.println(" - " + clientUsername + " is alive.");
                 
                 break;
                 
@@ -280,7 +291,7 @@ public class RequestWorker implements Runnable {
                 System.out.println("Request: Successful user authentication for: " + clientIp);
                 
                 // Pull client chats from the DB
-                
+                chatmap = dbWorker.pullChatMap(login.getUsername());
                 
                 return true;
             }
@@ -346,23 +357,60 @@ public class RequestWorker implements Runnable {
     // Chat handler methods
     */
     
-    private void processNewChat(Chat chat)
+    private void processChat(Chat chat)
     {
-        String destination = chat.getDestination();
-        // Check if the user is online
-        if (TarkovTraderServer.authenticatedUsers.containsKey(destination))
+        if (chat.isNew)
         {
-            // User is online, get the client's worker to forward them the new chat
-            RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
-            if (destinationWorker.sendForm(chat))
-            {
-                System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
-            }
-            else
-                System.out.println("Request: Failed to process new chat from " + chat.getOrigin() + " to " + destination + ".");
+            chat.setOpened();
             
-            destinationWorker = null;
+            // The new chat is from this worker's user, we need to forward to the other user if they are online. We will also need to put the chat into the user's DB row regardless if offline/online
+            String destination = chat.getDestination();  // Username new chat is being sent to
+            HashMap<String, Chat> syncchatmap;
+            
+            // Insert chat into both users DB
+            // First, update this user's chat map and sync
+            syncchatmap = dbWorker.pullChatMap(clientUsername);
+            syncchatmap.put(chat.getDestination(), chat);
+            dbWorker.insertChatMap(clientUsername, syncchatmap);
+            syncChats();
+            syncchatmap = null;
+                    
+            // Now, update the receiving user's -- sync only if the user is online
+            syncchatmap = dbWorker.pullChatMap(chat.getDestination());
+            syncchatmap.put(chat.getOrigin(), chat);
+            dbWorker.insertChatMap(chat.getDestination(), syncchatmap);
+            syncchatmap = null;
+            
+            // Check if the user is online
+            if (TarkovTraderServer.authenticatedUsers.containsKey(destination))
+            {
+                // User is online, get the client's worker to forward them the new chat
+                RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
+                destinationWorker.syncChats();
+                destinationWorker.communicator.sendAlert("New message from: " + chat.getOrigin());
+                communicator.sendAlert(chat.getDestination() + " is online. Notification sent.");
+                destinationWorker = null;
+            }
+            
+            System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
         }
+    }
+    
+    
+    public void syncChats()
+    {
+        this.chatmap = dbWorker.pullChatMap(clientUsername);
+        ChatListForm chatlistform = new ChatListForm();
+        ArrayList<Chat> chatlist = new ArrayList<>();
+        
+        for (Map.Entry<String, Chat> entry : chatmap.entrySet())
+        {
+            chatlist.add(entry.getValue());
+        }
+        
+        chatlistform.setChatList(chatlist);
+        
+        this.sendForm(chatlistform);
     }
     
 }

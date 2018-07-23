@@ -4,6 +4,7 @@ import java.util.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import tarkov.trader.objects.HeartbeatForm;
 
 public class TarkovTraderServer {
 
@@ -21,7 +22,8 @@ public class TarkovTraderServer {
     public final static String dbDriver = "com.mysql.cj.jdbc.Driver";
     private String command;
     
-    public static HashMap<String, RequestWorker> authenticatedUsers;
+    public static HashMap<String, RequestWorker> authenticatedUsers;   // <Username, Respective worker>
+    
     
     public static void main(String[] args) 
     {
@@ -104,10 +106,87 @@ public class TarkovTraderServer {
     
     private void openCommandLine()
     {
+        System.out.println("\n");
+        
         while (true)
         {
-            command = scan.next();
+            command = scan.nextLine();
+            processCommand(command);
         }
     }
     
+    
+    private void processCommand(String command)
+    {
+        System.out.println("\n");
+        System.out.println("****************************************************************************");
+        
+        switch (command)
+        {
+            case "kickall": 
+                kickAll();
+                break;
+                
+            case "getusers":
+                listOnlineUsers();
+                break;
+                
+            case "announce":
+                announce(command.substring(9));
+                break;
+                
+            case "heartbeat":
+                checkClientConnectivity();
+                break;
+                
+        }
+        
+        System.out.println("****************************************************************************");
+        System.out.println("\n");
+        
+    }
+    
+    
+    private void announce(String announcement)
+    {
+        for (Map.Entry<String, RequestWorker> entry : TarkovTraderServer.authenticatedUsers.entrySet())
+        {
+            RequestWorker tempworker = entry.getValue();
+            tempworker.communicator.sendAlert(announcement);
+        }
+    }
+    
+    
+    private void kickAll()
+    {
+        announce("SERVER: GOING DOWN FOR MAINTENANCE.");
+        TarkovTraderServer.authenticatedUsers.clear();
+        System.out.println("SERVER: Authenticated user map cleared.");
+    }
+    
+    
+    private void listOnlineUsers()
+    {
+        System.out.println("Online User List:");
+        for (Map.Entry<String, RequestWorker> entry : TarkovTraderServer.authenticatedUsers.entrySet())
+        {
+            System.out.println(" - " + entry.getValue().clientUsername);
+        }
+    }
+    
+    
+    private void checkClientConnectivity()
+    {
+        System.out.println("Sending heartbeat checks:");
+        for (Map.Entry<String, RequestWorker> entry : TarkovTraderServer.authenticatedUsers.entrySet())
+        {
+            if (entry.getValue().sendForm(new HeartbeatForm()))
+                System.out.println(" - Requested: " + entry.getValue().clientUsername);
+            else
+            {
+                TarkovTraderServer.authenticatedUsers.remove(entry.getValue().clientUsername);
+                System.out.println(" - Removed: " + entry.getValue().clientUsername);
+            }
+        }        
+    }
 }

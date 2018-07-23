@@ -31,31 +31,3 @@ public class Alert {
     }
     
 }
-
-
-    /*public static void display(String title, String message)    DEPRECATED NOTIFICATIONS ---- USING CONTROLSFX SYSTEM NOTIFICATIONS
-    {
-        Stage alertStage = new Stage();
-        Scene alertScene;
-        
-        VBox layout;
-        Label alertLabel = new Label(message);
-        Button closeButton = new Button("Close");
-        
-        alertStage.setTitle(title);
-        alertStage.initModality(Modality.APPLICATION_MODAL);
-        
-        layout = new VBox(20);
-        layout.setPadding(new Insets(20));
-        layout.setAlignment(Pos.CENTER);
-        layout.getChildren().addAll(alertLabel, closeButton);
-        
-        closeButton.setOnAction(e -> alertStage.close());
-        
-        alertScene = new Scene(layout);
-        alertScene.getStylesheets().add("/tarkov/trader/client/veneno.css");
-        alertStage.setScene(alertScene);
-        
-        alertStage.showAndWait();
-        
-    }*/

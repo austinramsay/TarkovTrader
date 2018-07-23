@@ -15,7 +15,7 @@ public class Chat extends Form {
     private String origin;   // This string will be a client's username that initiated the chat
     private String destination;   // This string will be a client's username receiving the new chat
     private ArrayList<String> messages;   // The arraylist will hold strings of messages between clients
-    private int chatId;
+    
     
     public Chat(String origin, String destination, ArrayList<String> messages)
     {
@@ -52,12 +52,6 @@ public class Chat extends Form {
             return destination;
         else
             return origin;
-    }
-    
-    
-    public int getChatId()
-    {
-        return chatId;
     }
     
     
