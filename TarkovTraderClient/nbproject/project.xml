@@ -15,6 +15,7 @@
         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
             <name>TarkovTrader</name>
             <source-roots>
+                <root id="src.controlsfx-8.40.14.dir"/>
                 <root id="src.resources.dir"/>
                 <root id="src.dir"/>
             </source-roots>

@@ -49,7 +49,6 @@ public class AddItemStage {
     private ChoiceBox<String> itemTypeDropdown;
     private TextField itemNameInput;
     private TextField priceInput;
-    private TextField timezoneInput;
     private TextField keywordsInput;
     private TextArea notesInput;
     private Button chooseImage;

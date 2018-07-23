@@ -2,6 +2,7 @@
 package tarkov.trader.client;
 
 import java.util.ArrayList;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -21,6 +22,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import tarkov.trader.objects.ChatListForm;
+import tarkov.trader.objects.Form;
 
 /**
  *
@@ -28,7 +31,9 @@ import javafx.scene.layout.VBox;
  */
 
 public class Messenger {
-    
+        
+    private RequestWorker worker;
+    public volatile static boolean isOpen;
     
     Stage messenger = new Stage();
     
@@ -52,20 +57,21 @@ public class Messenger {
     private TextField chatInput;
     
     private Button send;
-    private Button newChat;
+    private Button newChatButton;
     private Button cancel;
     
-    private ListView<Chat> chatListView;
+    public ListView<Chat> chatListView;
     
     
-    public Messenger()
+    public Messenger(RequestWorker worker)
     {
+        this.worker = worker;
         loadResources();
     }
     
     public Messenger(String destination)
     {
-        
+        // This should be used for calling 'Contact Seller' in an item listing
     }
     
     private void loadResources()
@@ -112,10 +118,11 @@ public class Messenger {
                 if (empty || chat == null)
                 {
                     this.setText(null);
+                    this.setGraphic(null);
                 }
                 else
                 {
-                    this.setText(chat.getOrigin());
+                    this.setText(chat.getName(TarkovTrader.username));
                     this.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/chat.png"), 24, 24, true, true)));
                     this.setPrefHeight(45);
                 }
@@ -129,16 +136,18 @@ public class Messenger {
         chatDisplay.setText("No chat selected.");
         chatDisplay.setEditable(false);
         chatDisplay.setWrapText(true);
+        chatDisplay.getStyleClass().add("chatDisplay");
         
         chatInput = new TextField();
         
         
         // Buttons
         send = new Button("Send");
+        send.setOnAction(e -> send());
         
-        newChat = new Button("New Chat");
-        newChat.setGraphic(newIconViewer);
-        newChat.setOnAction(e -> newChatPrompt().show());
+        newChatButton = new Button("New Chat");
+        newChatButton.setGraphic(newIconViewer);
+        newChatButton.setOnAction(e -> newChatPrompt().show());
         
         cancel = new Button("Return");
         cancel.setGraphic(cancelIconViewer);
@@ -167,7 +176,7 @@ public class Messenger {
         // This will contain 'Actions' label, the ListView to show available chats, and an HBox on the bottom for 2 buttons 'New Chat' & 'Return'
         HBox leftButtonBox = new HBox(10);
         leftButtonBox.setAlignment(Pos.CENTER);
-        leftButtonBox.getChildren().addAll(newChat, cancel);
+        leftButtonBox.getChildren().addAll(newChatButton, cancel);
         
         VBox leftDisplay = new VBox(30);
         leftDisplay.setPadding(new Insets(25,20,25,20));
@@ -203,15 +212,15 @@ public class Messenger {
         messenger.setTitle("Messenger");
         messenger.getIcons().add(icon);
         messenger.setOnCloseRequest(e -> messenger.close());
-        messenger.show();
-        
-        
-        // TESTING TESTING ----------------
-        this.populate(null);
-        
-        
+        Messenger.isOpen = true;
+        messenger.show();     
+      
         // After stage is displayed, resize text fields/areas
         resizeFields();
+        
+        
+        // Finally, pull fresh chat list from the server
+        pullChatList();
     }
     
     
@@ -222,9 +231,12 @@ public class Messenger {
     }
     
     
-    private void unpackChatMessages(ArrayList<String> messageList)
+    private boolean unpackChatMessages(ArrayList<String> messageList)
     {
         chatDisplay.setText(null);
+        
+        if (messageList == null)
+            return false;
         
         for (String message : messageList)
         {
@@ -233,32 +245,26 @@ public class Messenger {
             else
                 chatDisplay.appendText("\n" + message);
         }
+        
+        return true;
     }
     
     
-    private void populate(ArrayList<Chat> chatList)
+    public void populate(ArrayList<Chat> chatList)
     {
-        ArrayList<Chat> testList = new ArrayList<>();
-        ArrayList<String> testMessages = new ArrayList<>();
-        testMessages.add("this is a message");
-        testMessages.add("this is a second message");
-        testMessages.add("we are testing the messenger");
-        testMessages.add("how much for that epsilon?");
-        testList.add(new Chat("supertroopr", "austinramsay", testMessages));
-        testList.add(new Chat("deadlyslob", "austinramsay", testMessages));
-        chatListView.setItems(getChatList(testList));
+        chatListView.setItems(getChatList(chatList));
+    }
+    
+    
+    private void populateNewChat(ObservableList<Chat> newChatList)
+    {
+        chatListView.setItems(newChatList);
     }
         
     
     private ObservableList<Chat> getChatList(ArrayList<Chat> chatList)
     {
         return FXCollections.observableArrayList(chatList);
-    }
-    
-    
-    private ObservableList<Chat> getCurrentChatList()
-    {
-        return chatListView.getItems();
     }
     
     
@@ -277,7 +283,7 @@ public class Messenger {
             {
                 if (!newChatUsernameInput.getText().equals(""))
                 {
-                    buildNewChat();
+                    buildNewChat(newChatUsernameInput.getText());
                     prompt.close();
                 }
                 else
@@ -296,7 +302,7 @@ public class Messenger {
         newChatButtonBox.setAlignment(Pos.CENTER);
         newChatButtonBox.getChildren().addAll(createNewChat, cancelNewChat);
         
-        VBox newChatRoot = new VBox(8);
+        VBox newChatRoot = new VBox(11);
         newChatRoot.setPadding(new Insets(10));
         newChatRoot.getChildren().addAll(newChatCenterDisplay, newChatButtonBox);
         
@@ -311,14 +317,71 @@ public class Messenger {
     }
     
     
-    private boolean buildNewChat()
+    private boolean buildNewChat(String destination)
     {
+        // TODO: Check if username exists -- and if user is online
+        
+        Chat newchat = new Chat(TarkovTrader.username, destination, null);
+        chatListView.getItems().add(newchat);
+        chatListView.getSelectionModel().select(newchat);
+        
+        chatDisplay.setText("New chat to: " + newchat.getDestination());
+        
+        return false;
+    }
+    
+    
+    private boolean send()
+    {
+        Chat currentChat = chatListView.getSelectionModel().getSelectedItem();
+        String message = chatInput.getText();
+        if (message.equals(""))
+            return false;
+        
+        if (currentChat == null)
+        {
+            Platform.runLater(() -> Alert.display(null, "No chat selected."));
+            return false;
+        }
+            
+        if (currentChat.getMessages() == null)
+        {
+            // Starting a new chat
+            currentChat.appendMessage(message);
+            worker.sendForm(currentChat);
+            return true;
+        }
+        else if (currentChat.getMessages() != null)
+        {
+            // Using an open chat
+            System.out.println("sending a current chat");
+            return true;
+        }
+        
+        return false;
+    }
+    
+    
+    private boolean pullChatList()
+    {
+        // Build a form of type 'chatlist'
+        // Server responds with full list and requestworker will populate the listview
+        ChatListForm requestchatform = new ChatListForm();
+        
+        
+        if (worker.sendForm(requestchatform))
+            return true;
+        else
+            Platform.runLater(() -> Alert.display(null, "Failed to request chat list from server."));
+        
+        requestchatform = null;
         return false;
     }
     
     
     private void close()
     {
+        Messenger.isOpen = false;
         messenger.close();
     }
     

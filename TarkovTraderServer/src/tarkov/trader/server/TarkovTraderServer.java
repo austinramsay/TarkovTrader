@@ -1,8 +1,6 @@
 
 package tarkov.trader.server;
 import java.util.*;
-import java.io.*;
-import java.net.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -23,7 +21,7 @@ public class TarkovTraderServer {
     public final static String dbDriver = "com.mysql.cj.jdbc.Driver";
     private String command;
     
-    public static HashMap<String, String> authenticatedUsers;
+    public static HashMap<String, RequestWorker> authenticatedUsers;
     
     public static void main(String[] args) 
     {

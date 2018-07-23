@@ -11,10 +11,10 @@ import javafx.scene.image.ImageView;
  */
 
 // The purpose of this class is to process serialized images on the client side only
-// Because the server is designed to run on Solaris, and the Solaris release of Java does not contain JavaFX, the server cannot process JavaFX objects
+// Because the server is designed to run on Solaris, and the Solaris release of Java does not contain JavaFX, the server cannot process JavaFX objects e.g. Image & ImageView
 // The 'Item' class contains a byte array for a serialized image
 // This class de-serializes the image to be displayed in browser
-// This class is read by the CellValueFactory to populate the browser
+// This class is read by the CellValueFactory to populate the browser item list
 
 
 public class ProcessedItem {
@@ -127,9 +127,15 @@ public class ProcessedItem {
             case "Armor/Helmet":
                 imageFlag = "/genericarmor.png";
                 break;
+            case "Ammo":
+                imageFlag = "/genericammo.png";
+                break;
             case "Misc":
                 imageFlag = "/genericmisc.png";
                 break;             
+            case "Medicine":
+                imageFlag = "/genericmedicine.png";
+                break;
             default:
                 imageFlag = "/generic.png";
                 break;

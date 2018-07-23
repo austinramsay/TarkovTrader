@@ -85,6 +85,11 @@
     -fx-text-fill: #fefefe;
 }
 
+.chatDisplay, .chatDisplay .content {
+    -fx-background-color: linear-gradient(to bottom right, #474747 0%, black 100%);
+    -fx-text-fill: #fefefe;
+}
+
 .text-input {
     -fx-background-color: #010101;
     -fx-text-fill: #fefefe;

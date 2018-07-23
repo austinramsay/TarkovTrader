@@ -241,7 +241,7 @@ public class TarkovTrader extends Application {
     
     private void displayMessenger()
     {
-        messenger = new Messenger();
+        messenger = new Messenger(worker);
         messenger.display();
     }
     
@@ -282,6 +282,11 @@ public class TarkovTrader extends Application {
         return this.worker;
     }
     
+    
+    public Messenger getMessenger()
+    {
+        return this.messenger;
+    }
     
     public void close()
     {

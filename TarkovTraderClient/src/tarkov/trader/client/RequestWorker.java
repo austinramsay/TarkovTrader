@@ -5,6 +5,8 @@ import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
 import javafx.application.Platform;
+import tarkov.trader.objects.Chat;
+import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
 import tarkov.trader.objects.Item;
@@ -152,8 +154,33 @@ public class RequestWorker implements Runnable
                 trader.getBrowser().populate(getProcessedItemList(itemlistform));
                 break;
                 
+            case "chat":
+                // New chat received from server, check if messenger is active else just let messenger pull from server upon opening and display a notification
+                Chat newchat = (Chat)processedRequest;
+                
+                if (Messenger.isOpen)
+                {
+                    trader.getMessenger().chatListView.getItems().add(newchat);
+                    Platform.runLater(() -> Alert.display(null, "New chat from: " + newchat.getOrigin()));
+                }
+                else
+                    Platform.runLater(() -> Alert.display(null, "New chat from: " + newchat.getOrigin()));
+                
+                break;
+                
+            case "chatlist":
+                // Client requested a chat list, results were returned from the server, and now we need to populate the messenger list
+                ChatListForm chatlistform = (ChatListForm)processedRequest;
+                
+                if (Messenger.isOpen)
+                {
+                    trader.getMessenger().populate(chatlistform.getChatList());
+                }
+                
+                break;
+                
             default:
-                Platform.runLater(() -> Alert.display("Request Worker", "Received an unknown type of form."));
+                Platform.runLater(() -> Alert.display(null, "Received an unknown type of form."));
                 break;
         }
     }

@@ -8,17 +8,18 @@ import java.util.ArrayList;
  * @author austin
  */
 
-public class Chat {
+public class Chat extends Form {
     
     
-    private boolean isNew;
+    public boolean isNew;
     private String origin;   // This string will be a client's username that initiated the chat
     private String destination;   // This string will be a client's username receiving the new chat
     private ArrayList<String> messages;   // The arraylist will hold strings of messages between clients
-    
+    private int chatId;
     
     public Chat(String origin, String destination, ArrayList<String> messages)
     {
+        this.type = "chat";
         this.isNew = true;
         this.origin = origin;
         this.destination = destination;
@@ -45,6 +46,21 @@ public class Chat {
     }
     
     
+    public String getName(String clientName)
+    {
+        if (origin.equals(clientName))
+            return destination;
+        else
+            return origin;
+    }
+    
+    
+    public int getChatId()
+    {
+        return chatId;
+    }
+    
+    
     
     // Setters:
     public void setOpened()   // Server calls this upon receiving and recognizing the chat is 'new'
@@ -56,6 +72,17 @@ public class Chat {
     public void setMessages(ArrayList<String> messages)
     {
         this.messages = messages;
+    }
+    
+    
+    public void appendMessage(String message)
+    {
+        if (this.messages == null)
+        {
+            this.messages = new ArrayList<>();
+        }
+        
+        this.messages.add(message);
     }
     
 }
