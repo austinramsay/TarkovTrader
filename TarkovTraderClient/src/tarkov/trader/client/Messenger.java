@@ -23,6 +23,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import tarkov.trader.objects.ChatListForm;
+import tarkov.trader.objects.Message;
 
 /**
  *
@@ -239,10 +240,7 @@ public class Messenger {
         
         for (String message : messageList)
         {
-            if (chatDisplay.getText() == null)
-                chatDisplay.appendText(message);
-            else
-                chatDisplay.appendText("\n" + message);
+            append(message);
         }
         
         return true;
@@ -333,13 +331,14 @@ public class Messenger {
     private boolean send()
     {
         Chat currentChat = chatListView.getSelectionModel().getSelectedItem();
-        String message = chatInput.getText();
+        String message = TarkovTrader.username + ": " + chatInput.getText();
         if (message.equals(""))
             return false;
         
         if (currentChat == null)
         {
             Platform.runLater(() -> Alert.display(null, "No chat selected."));
+            chatInput.setText("");
             return false;
         }
             
@@ -348,16 +347,32 @@ public class Messenger {
             // Starting a new chat
             currentChat.appendMessage(message);
             worker.sendForm(currentChat);
+            chatInput.setText("");
             return true;
         }
         else if (currentChat.getMessages() != null)
         {
             // Using an open chat
-            System.out.println("sending a current chat");
+            Message messageform = new Message(TarkovTrader.username, currentChat.getName(TarkovTrader.username), message);
+            if (worker.sendForm(messageform))
+            {
+                currentChat.appendMessage(message);
+                append(message);
+            }
+            chatInput.setText("");
             return true;
         }
         
         return false;
+    }
+    
+    
+    private void append(String message)
+    {
+        if (chatDisplay.getText() == null)
+            chatDisplay.appendText(message);
+        else
+            chatDisplay.appendText("\n" + message);    
     }
     
     
@@ -376,6 +391,29 @@ public class Messenger {
         
         requestchatform = null;
         return false;
+    }
+    
+    
+    public synchronized void processMessage(Message messageform)
+    {
+        String sender = messageform.getOrigin();
+        String message = messageform.getMessage();
+        
+        if (chatListView.getItems() != null)
+        {
+            if (chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username).equals(sender))
+            {
+                append(message);
+            }
+            else
+            {
+                for (Chat chat : chatListView.getItems())
+                {
+                    if (chat.getName(TarkovTrader.username).equals(sender))
+                         chat.appendMessage(message);
+                }
+            }
+        }
     }
     
     

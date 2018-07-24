@@ -629,6 +629,68 @@ public class DatabaseWorker
     }
     
     
+    // For inserting a new message into a chat (could be used by message cache flush or if a user is offline and we need to push the message
+    public boolean insertNewMessage(String pullusername, String chatusername, String message)
+    {
+        String pullcommand = "SELECT ChatMap FROM chats WHERE Username=?;";
+        String updatecommand = "UPDATE chats SET ChatMap = ? WHERE Username = ?;";
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        ResultSet result = null;
+        
+        try 
+        {
+            dbConnection = getDBconnection();
+            statement = dbConnection.prepareStatement(pullcommand);   
+            
+            statement.setString(1, pullusername);
+            
+            result = statement.executeQuery();
+            result.first();
+            
+            byte[] chatmapbytes = result.getBytes(1);
+            
+            HashMap<String, Chat> tempChatMap = (HashMap)convertBlobToObject(chatmapbytes);
+            
+            Chat tempChat = tempChatMap.get(chatusername);
+            tempChat.appendMessage(message);
+            
+            tempChatMap.put(chatusername, tempChat);
+            
+            statement = null;
+            statement = dbConnection.prepareStatement(updatecommand);
+            
+            statement.setObject(1, tempChatMap);
+            statement.setString(2, pullusername);
+            
+            statement.executeUpdate();
+            
+            return true;
+        }
+        catch (SQLException e)
+        {
+            String error = "DBWorker: New message insert failed for " + clientIp + ". Error: " + e.getMessage();
+            System.out.println(error);
+            communicator.sendAlert(error);
+            return false;
+        }
+        finally 
+        {
+            try {
+                if (statement != null)
+                    statement.close();
+                if (result != null)
+                    result.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after inserting message for " + clientIp + "."); }
+        }
+    }
+    
+    // END CHAT SECTION
+    
+    
     //
     // This method is used to convert blobs back into objects, needed universally throughout the DBWorker
     //

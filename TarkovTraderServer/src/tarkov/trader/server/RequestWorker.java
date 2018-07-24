@@ -14,6 +14,7 @@ import tarkov.trader.objects.Form;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemForm;
 import tarkov.trader.objects.ItemListForm;
+import tarkov.trader.objects.Message;
 
 
 public class RequestWorker implements Runnable {
@@ -29,7 +30,8 @@ public class RequestWorker implements Runnable {
     private ObjectOutputStream outputStream;
     private Form form;
     
-    private HashMap<String, Chat> chatmap;  // This will be pulled from DB upon authenticated login
+    private HashMap<String, Chat> chatmap;  // This will be pulled from DB upon authenticated login and when it needs to sync upon receiving new chat
+    private HashMap<String, ArrayList<String>> messageCache;  // The cache will be pushed to database upon disconnection   (Username, Message)
     
     public RequestWorker(Socket client, Socket clientComm)
     {
@@ -45,6 +47,7 @@ public class RequestWorker implements Runnable {
         
         communicator = new ClientCommunicator(clientComm);
         dbWorker = new DatabaseWorker(clientIp, communicator, this);
+        
         try
         {
             openStreams();
@@ -56,8 +59,12 @@ public class RequestWorker implements Runnable {
         catch (IOException e)
         {
             System.out.println("Client " + clientIp + " has disconnected.");
+            
             if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
+            {
+                syncCache();
                 TarkovTraderServer.authenticatedUsers.remove(clientUsername);
+            }
             // TODO: HANDLE A CLOSED CONNECTION
         }
         catch (ClassNotFoundException e)
@@ -157,6 +164,19 @@ public class RequestWorker implements Runnable {
                 
             case "chatlist":
                 syncChats();
+                
+                break;
+                
+                
+            case "message":
+                Message messageform = (Message)form;
+                
+                if (authenticateRequest())
+                {
+                    processMessage(messageform);
+                }
+                else
+                    sendAuthenticationFailure();
                 
                 break;
                 
@@ -291,7 +311,8 @@ public class RequestWorker implements Runnable {
                 System.out.println("Request: Successful user authentication for: " + clientIp);
                 
                 // Pull client chats from the DB
-                chatmap = dbWorker.pullChatMap(login.getUsername());
+                chatmap = dbWorker.pullChatMap(login.getUsername());   // Will never need to initialize because this is stored upon account creation
+                messageCache = new HashMap<>();
                 
                 return true;
             }
@@ -355,6 +376,7 @@ public class RequestWorker implements Runnable {
     
     /*
     // Chat handler methods
+    // For processing new chats, messages, and dealing with the message cache
     */
     
     private void processChat(Chat chat)
@@ -365,31 +387,31 @@ public class RequestWorker implements Runnable {
             
             // The new chat is from this worker's user, we need to forward to the other user if they are online. We will also need to put the chat into the user's DB row regardless if offline/online
             String destination = chat.getDestination();  // Username new chat is being sent to
-            HashMap<String, Chat> syncchatmap;
+            HashMap<String, Chat> syncchatmap;           // We'll use this temp object to pull this users as well as the destination users chat map in the database
             
             // Insert chat into both users DB
             // First, update this user's chat map and sync
-            syncchatmap = dbWorker.pullChatMap(clientUsername);
-            syncchatmap.put(chat.getDestination(), chat);
-            dbWorker.insertChatMap(clientUsername, syncchatmap);
-            syncChats();
-            syncchatmap = null;
+            syncchatmap = dbWorker.pullChatMap(clientUsername);          // Pull most recent chat map for this user (should really be the same as the chatmap object in this class anyway, if not, something happened
+            syncchatmap.put(chat.getDestination(), chat);                // Insert this new chat into the map
+            dbWorker.insertChatMap(clientUsername, syncchatmap);         // Resinert to this users DB. Now we can sync
+            syncChats();                                                 // Sync just for good measure
+            syncchatmap = null;                                          // Close this map
                     
             // Now, update the receiving user's -- sync only if the user is online
-            syncchatmap = dbWorker.pullChatMap(chat.getDestination());
-            syncchatmap.put(chat.getOrigin(), chat);
-            dbWorker.insertChatMap(chat.getDestination(), syncchatmap);
+            syncchatmap = dbWorker.pullChatMap(chat.getDestination());   // We pull the destination users chat map
+            syncchatmap.put(chat.getOrigin(), chat);                     // Add this new chat
+            dbWorker.insertChatMap(chat.getDestination(), syncchatmap);  // Reinsert to destination users DB. Can now sync if online or pull new info upon login if offline
             syncchatmap = null;
             
             // Check if the user is online
-            if (TarkovTraderServer.authenticatedUsers.containsKey(destination))
+            if (isOnline(destination))                            // If the user is online, they will be in the authenticated users map
             {
                 // User is online, get the client's worker to forward them the new chat
-                RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
-                destinationWorker.syncChats();
-                destinationWorker.communicator.sendAlert("New message from: " + chat.getOrigin());
-                communicator.sendAlert(chat.getDestination() + " is online. Notification sent.");
-                destinationWorker = null;
+                RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);  // Get the destination users RequestWorker
+                destinationWorker.syncChats();                                                             // Make the destination users worker resync and push update to client
+                destinationWorker.communicator.sendAlert("New message from: " + chat.getOrigin());         // Send notification to destination user that a new chat is received
+                communicator.sendAlert(chat.getDestination() + " is online. Notification sent.");          // Let THIS user know that the destination client is online and has received successfully
+                destinationWorker = null;                                                                  // Close the destinationWorker
             }
             
             System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
@@ -397,9 +419,16 @@ public class RequestWorker implements Runnable {
     }
     
     
+    // Pulls the most recent chat map stored in the database, and iterates through all the chats to add into an arraylist. Then pushes the most recent list to the client
     public void syncChats()
     {
-        this.chatmap = dbWorker.pullChatMap(clientUsername);
+        
+        if (!messageCache.isEmpty())
+        {
+            syncCache();
+        }
+        
+        this.chatmap = dbWorker.pullChatMap(clientUsername);   // BUG: Pulling stored DB chatmap when there are cached messages that havent synced yet
         ChatListForm chatlistform = new ChatListForm();
         ArrayList<Chat> chatlist = new ArrayList<>();
         
@@ -411,6 +440,110 @@ public class RequestWorker implements Runnable {
         chatlistform.setChatList(chatlist);
         
         this.sendForm(chatlistform);
+    }
+    
+    
+    // Inbound message for an established chat. Could be sent by this user or a this could be the destination user
+    public synchronized void processMessage(Message messageform)
+    {
+        String origin = messageform.getOrigin();
+        String destination = messageform.getDestination();
+        String message = messageform.getMessage();
+        
+        
+        if (destination.equals(clientUsername))   // If the inbound message destination is this user, forward this message to this user's client - this means another users request worker found this client is online..and is using
+        {
+            submitMessageToCache(origin, message);
+            sendForm(messageform);
+        }
+        else   // The user has sent this message to someone else, forward to them
+        {
+            submitMessageToCache(destination, message);
+            if (isOnline(destination))
+            {
+                // No need to push to other users DB, their message cache will handle this itself
+                RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
+                destinationWorker.processMessage(messageform);
+                destinationWorker = null;
+            }
+            else
+            {
+                // Just push to the other users DB
+                dbWorker.insertNewMessage(destination, clientUsername, message);
+            }
+        }
+    }
+    
+    
+    private void submitMessageToCache(String username, String message)
+    {
+        // If the origin's username already exists in the current message cache, just add to the String arraylist
+        
+        if (messageCache.containsKey(username))
+            messageCache.get(username).add(message);
+        
+        else
+        {
+            // The user hasn't dealt with this username in the message cache for this session.
+            // Create a temp arraylist to put into the message cache which can then be added to for future messages later
+            
+            ArrayList<String> tempMessageCache = new ArrayList<>();
+            tempMessageCache.add(message);
+            messageCache.put(username, tempMessageCache);
+            tempMessageCache = null;
+        }
+    }
+    
+    
+    private boolean syncCache()
+    {
+        // Need to update the current instance's 'chatmap' with the message cache, and then sync with DB   --  Message Cache; Hashmap<String, ArrayList<String>>
+        // Hashmap with key being the other parties name, and the arraylist of messages
+        
+        if (messageCache.isEmpty())
+            return false;
+        
+                
+        System.out.println("Syncing cached messages for " + clientIp + "...");
+        int counter = 0;
+        
+        // Need to push this sessions messages into the corresponding chat in the chatmap
+        for (Map.Entry<String, ArrayList<String>> entry : messageCache.entrySet())    // The key will be the other users name, the value will contain this sessions messages
+        {
+            String destination = entry.getKey();
+            ArrayList<String> cachedMessages = entry.getValue();
+ 
+            Chat syncChat = chatmap.get(destination);
+            ArrayList<String> currentMessages = syncChat.getMessages();
+            
+            for (String cached : cachedMessages)
+            {
+                counter++;
+                currentMessages.add(cached);
+            }
+            
+            // Current messages done syncing
+            // Reinsert messages into the chat
+            syncChat.setMessages(currentMessages);
+            chatmap.put(destination, syncChat);
+        }
+        
+        dbWorker.insertChatMap(clientUsername, chatmap);
+        
+        messageCache.clear();
+        
+        System.out.println("Sync complete... " + counter + " messages pushed.");
+        
+        return true;
+    }
+    
+    
+    private boolean isOnline(String username)
+    {
+        if (TarkovTraderServer.authenticatedUsers.containsKey(username))
+            return true;
+        else
+            return false;
     }
     
 }

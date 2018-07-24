@@ -11,6 +11,7 @@ import tarkov.trader.objects.Form;
 import tarkov.trader.objects.HeartbeatForm;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
+import tarkov.trader.objects.Message;
 import tarkov.trader.objects.ProcessedItem;
 
 
@@ -153,6 +154,7 @@ public class RequestWorker implements Runnable
                 // Convert the 'Item's to 'ProcessedItem's and get an arraylist of ProcessedItems to send to browser
                 
                 trader.getBrowser().populate(getProcessedItemList(itemlistform));
+                
                 break;
                 
                 
@@ -166,6 +168,13 @@ public class RequestWorker implements Runnable
                 }
                 
                 break;
+                
+                
+            case "message":
+                Message messageform = (Message)processedRequest;
+                processMessage(messageform);
+                
+                break; 
                 
                 
             case "heartbeat":
@@ -197,6 +206,19 @@ public class RequestWorker implements Runnable
         }
         
         return processedItemList;
+    }
+    
+    
+    private void processMessage(Message messageform)
+    {
+        if (Messenger.isOpen)
+        {
+            trader.getMessenger().processMessage(messageform);
+        }
+        else
+        {
+            Platform.runLater(() -> Alert.display(null, "New message from: " + messageform.getOrigin()));
+        }
     }
     
     
