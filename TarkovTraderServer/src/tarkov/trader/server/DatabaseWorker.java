@@ -29,6 +29,13 @@ public class DatabaseWorker
     private RequestWorker worker;
     
     
+    public DatabaseWorker()
+    {
+        // Should only use simple methods not requiring Worker/Communicator information directly
+        // Should only be used by the Server to pull database info
+    }
+    
+    
     public DatabaseWorker(String clientIp, ClientCommunicator communicator, RequestWorker worker)
     {
         this.clientIp = clientIp;
@@ -142,9 +149,61 @@ public class DatabaseWorker
                 if (dbConnection != null)
                     dbConnection.close();
             } catch (SQLException e) { System.out.println("DBWorker: Failed to close simple query resources."); }
-        }
+        }    
     }
     
+    
+    public ArrayList<String> pullUserList()
+    {
+        String command = "SELECT username FROM accounts;";
+        ArrayList<String> userList = new ArrayList<>();
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        ResultSet result = null;
+        
+        try 
+        {
+            dbConnection = this.getDBconnection();
+            
+            statement = dbConnection.prepareStatement(command);
+            
+            result = statement.executeQuery();
+            
+            if (result == null)
+            {
+                // No users in the database
+                return userList;
+            }
+            
+            while (result.next())
+            {
+                // Iterate results of usernames, add to the arraylist to be returned
+                userList.add(result.getString("username"));
+                System.out.println("added to user list: " + result.getString("username"));
+            }
+            
+            return userList;
+        }
+        catch (SQLException e)
+        {
+            System.out.println("DBWorker: Failed to perform simple result query. Given command: " + command + ". Error: " + e.getMessage());
+            return null;
+        }
+        finally 
+        {
+            try {
+                if (result != null)
+                    result.close();
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { System.out.println("DBWorker: Failed to close simple query resources."); }
+        }
+    }
+        
+        
     
     /*
     // The next section deals with authenticating user logins and retrieving account info upon login
@@ -557,7 +616,9 @@ public class DatabaseWorker
             while (matchingItemResults.next())
             {
                 byte[] blobObject = matchingItemResults.getBytes("ItemObject");
-                matchingItemList.add((Item)convertBlobToObject(blobObject));
+                Item tempItem = (Item)convertBlobToObject(blobObject);
+                tempItem.setSellerState(TarkovTraderServer.authenticatedUsers.containsKey(tempItem.getUsername()));   // Set the 'Seller State' in the item before sending to client. 
+                matchingItemList.add(tempItem);
             }
             return matchingItemList;
         }
@@ -710,12 +771,12 @@ public class DatabaseWorker
         }
         catch (IOException e)
         {
-            System.out.println("Request worker: IO Exception converting blob to object. Error: " + e.getMessage());
+            System.out.println("DBWorker: IO Exception converting blob to object. Error: " + e.getMessage());
             return null;
         }
         catch (ClassNotFoundException e)
         {
-            System.out.println("Request worker: Class type not found converting blob to object. Error: " + e.getMessage());
+            System.out.println("DBWorker: Class type not found converting blob to object. Error: " + e.getMessage());
             return null;
         }
         finally 

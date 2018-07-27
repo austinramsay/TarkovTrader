@@ -25,6 +25,8 @@ import tarkov.trader.objects.ProcessedItem;
 public class ItemDisplay {
     
     private ProcessedItem item;
+    private RequestWorker worker;
+    private TarkovTrader trader;
     
     private Image outlineLogo;
     private Image cancelIcon;
@@ -46,6 +48,7 @@ public class ItemDisplay {
     private Label ignLabelFinal;
     private Label usernameLabelFinal;
     private Label timezoneLabelFinal;
+    private Label sellerStateLabelFinal;
     private Label itemInfoLabel;
     private Label priceLabelFinal;
     private Label dateLabelFinal;
@@ -53,6 +56,7 @@ public class ItemDisplay {
     private Label ignLabel;
     private Label usernameLabel;
     private Label timezoneLabel;
+    private Label sellerStateLabel;
     private Label priceLabel;
     private Label tradeStateLabel;
     private Label itemNameLabel;
@@ -65,8 +69,10 @@ public class ItemDisplay {
     private Button returnButton;
     
     
-    public ItemDisplay(ProcessedItem item)
+    public ItemDisplay(TarkovTrader trader, RequestWorker worker, ProcessedItem item)
     {
+        this.trader = trader;
+        this.worker = worker;
         this.item = item;
         loadResources();
         display();
@@ -118,6 +124,7 @@ public class ItemDisplay {
         ignLabelFinal = new Label("In-game Name:");
         usernameLabelFinal = new Label("Username:");
         timezoneLabelFinal = new Label("Timezone:");
+        sellerStateLabelFinal = new Label("Seller Status: ");
         priceLabelFinal = new Label("Price:");
         dateLabelFinal = new Label("Posting date:");
         
@@ -134,6 +141,7 @@ public class ItemDisplay {
         ignLabel = new Label(item.getIgn());
         usernameLabel = new Label(item.getUsername());
         timezoneLabel = new Label(item.getTimezone());
+        sellerStateLabel = new Label(item.getSellerState());
         priceLabel = new Label(item.getPrice());
         dateLabel = new Label(item.getDate());
         
@@ -145,6 +153,26 @@ public class ItemDisplay {
         // Button initialization
         contactButton = new Button("Contact Seller");
         contactButton.setGraphic(messagesIconViewer);
+        contactButton.setOnAction(e -> {
+            
+            Messenger messenger;
+            
+            if (!Messenger.isOpen)
+            {
+                trader.displayMessenger();
+                messenger = trader.getMessenger();
+            }
+            else
+            {
+                // Get messenger
+                messenger = trader.getMessenger();
+            }
+            
+            Messenger.contactSeller(messenger, item.getUsername(), item.getName());
+            
+            itemdisplay.close();
+            
+        });
         
         profileButton = new Button("Seller Profile");
         profileButton.setGraphic(profileIconViewer);
@@ -210,9 +238,11 @@ public class ItemDisplay {
         GridPane.setConstraints(ignLabelFinal, 0, 1);
         GridPane.setConstraints(usernameLabelFinal, 0, 2);
         GridPane.setConstraints(timezoneLabelFinal, 0, 3);
+        GridPane.setConstraints(sellerStateLabelFinal, 0, 4);
         GridPane.setConstraints(ignLabel, 1, 1);
         GridPane.setConstraints(usernameLabel, 1, 2);
         GridPane.setConstraints(timezoneLabel, 1, 3);
+        GridPane.setConstraints(sellerStateLabel, 1, 4);
         
         // Right grid
         GridPane.setConstraints(itemInfoLabel, 0, 0);
@@ -233,9 +263,11 @@ public class ItemDisplay {
                 ignLabelFinal,
                 usernameLabelFinal,
                 timezoneLabelFinal,
+                sellerStateLabelFinal,
                 ignLabel,
                 usernameLabel,
-                timezoneLabel);
+                timezoneLabel,
+                sellerStateLabel);
         
         
         // Right grid construction

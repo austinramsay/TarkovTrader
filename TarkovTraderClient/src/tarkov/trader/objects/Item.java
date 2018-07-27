@@ -26,10 +26,10 @@ public class Item implements Serializable {
     private String notes;
     private String date;
     
-    
     // To be 'set' by the server
-    private int itemId; // Will be set from the database autoincrement id value
+    private int itemId; // Will be set from the database autoincrement id value  --  NOT IN USE for now
     private String dealStatus; // Finalized? Closed? Open?
+    private String sellerState; // Seller online or offline? 
     
     
     public Item(File userImage, String tradeState, String itemType, String name, int price, String ign, String username, String timezone, String keywords, String notes)
@@ -116,6 +116,14 @@ public class Item implements Serializable {
         return date;
     }
     
+    public String getSellerState()
+    {
+        if (sellerState != null)
+            return sellerState;
+        else
+            return null;
+    }
+    
     // Setters:
     
     public void setItemId(int id)
@@ -132,5 +140,13 @@ public class Item implements Serializable {
     {
         DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
         this.date = dateFormat.format(new Date());
+    }
+    
+    public void setSellerState(boolean isOnline)
+    {
+        if (isOnline)
+            this.sellerState = "Online";
+        else
+            this.sellerState = "Offline";
     }
 }

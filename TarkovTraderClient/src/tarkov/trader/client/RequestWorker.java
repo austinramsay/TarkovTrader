@@ -13,12 +13,12 @@ import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.Message;
 import tarkov.trader.objects.ProcessedItem;
+import tarkov.trader.objects.SyncForm;
 
 
 public class RequestWorker implements Runnable
 {
     private TarkovTrader trader;
-    private Browser browser;
     private Form processedRequest;
     
     private Socket connection;
@@ -49,7 +49,7 @@ public class RequestWorker implements Runnable
         }
         catch (ClassNotFoundException e)
         {
-            Platform.runLater(() -> Alert.display("Request Worker", "Failed to decipher received processed request."));
+            Platform.runLater(() -> Alert.display("Request Worker", "Failed to decipher received request."));
             // TODO: NEED REQUEST WORKER TO REESTABLISH
         }
         catch (IOException e)
@@ -143,8 +143,10 @@ public class RequestWorker implements Runnable
                 TarkovTrader.ign = unpackedLogin.getIgn();
                 TarkovTrader.timezone = unpackedLogin.getTimezone();
                 TarkovTrader.userImageFile = unpackedLogin.getUserImageFile();
+                TarkovTrader.userList = unpackedLogin.getUserList();
+                TarkovTrader.onlineList = unpackedLogin.getOnlineList();
                 LoginPrompt.acknowledged = true;
-                
+              
                 break;
                 
                 
@@ -164,8 +166,18 @@ public class RequestWorker implements Runnable
                 
                 if (Messenger.isOpen)
                 {
-                    trader.getMessenger().populate(chatlistform.getChatList());
+                        Messenger tempMessenger = trader.getMessenger();
+                        int currentIndex = tempMessenger.chatListView.getSelectionModel().getSelectedIndex();
+                        tempMessenger.populate(chatlistform.getChatList());
+                        tempMessenger.chatListView.getSelectionModel().select(currentIndex);
+                        TarkovTrader.syncInProgress = false;
                 }
+                
+                else
+                {
+                    Platform.runLater(() -> Alert.display(null, "New chat received"));
+                    TarkovTrader.syncInProgress = false;
+                }                
                 
                 break;
                 
@@ -175,6 +187,13 @@ public class RequestWorker implements Runnable
                 processMessage(messageform);
                 
                 break; 
+                
+                
+            case "sync":
+                SyncForm syncinfo = (SyncForm)processedRequest;
+                processSync(syncinfo);
+                
+                break;
                 
                 
             case "heartbeat":
@@ -218,6 +237,25 @@ public class RequestWorker implements Runnable
         else
         {
             Platform.runLater(() -> Alert.display(null, "New message from: " + messageform.getOrigin()));
+        }
+    }
+    
+    
+    private void processSync(SyncForm syncinfo)
+    {
+        // Determine flags set
+        ArrayList<String> flags = syncinfo.getFlags();
+        
+        String flag = flags.get(0);
+        
+        if (flag.equals("onlineuserlist"))
+        {
+            TarkovTrader.onlineList = syncinfo.getOnlineUserList();
+        }
+        
+        if (flag.equals("fulluserlist"))
+        {
+            TarkovTrader.userList = syncinfo.getFullUserList();
         }
     }
     

@@ -1,6 +1,7 @@
 package tarkov.trader.client;
 
 import java.io.File;
+import java.util.ArrayList;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -42,10 +43,8 @@ public class TarkovTrader extends Application {
     private Scene mainUIscene;
     private MenuBar menubar;
     private Menu ttMenu;
-    private Menu moreMenu;
     private MenuItem aboutMenuItem;
     private MenuItem logoutMenuItem;
-    private MenuItem exitMenuItem;
     private Image avatar;
     private ImageView avatarViewer;
     private Label usernameDisplay;
@@ -65,6 +64,11 @@ public class TarkovTrader extends Application {
     public static File userImageFile;
     public static boolean connected;
     public static volatile boolean authenticated;
+    public static volatile boolean syncInProgress;
+    
+    public static volatile ArrayList<String> currentChats;
+    public static volatile ArrayList<String> userList;
+    public static volatile ArrayList<String> onlineList;
     // End logical variable declarations
     
     
@@ -75,6 +79,10 @@ public class TarkovTrader extends Application {
         
         TarkovTrader.connected = false;
         TarkovTrader.authenticated = false;
+        TarkovTrader.syncInProgress = false;
+        
+        currentChats = new ArrayList<>();
+        userList = new ArrayList<>();
         
         // All resources are loaded into static fields one time and shared across the application
         Resources.load();
@@ -105,14 +113,12 @@ public class TarkovTrader extends Application {
         // Build menubar and menus
         menubar = new MenuBar();
         ttMenu = new Menu("Tarkov Trader");
-        moreMenu = new Menu("More");
-        menubar.getMenus().addAll(ttMenu, moreMenu);
+        menubar.getMenus().addAll(ttMenu);
         
         aboutMenuItem = new MenuItem("About");
         logoutMenuItem = new MenuItem("Logout");
-        exitMenuItem = new MenuItem("Exit");
         
-        ttMenu.getItems().addAll(aboutMenuItem, logoutMenuItem, exitMenuItem);
+        ttMenu.getItems().addAll(aboutMenuItem, logoutMenuItem);
         
         // Username display label setup
         usernameDisplay = new Label(username);
@@ -200,6 +206,7 @@ public class TarkovTrader extends Application {
         mainUIscene = new Scene(border);
         mainUIscene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         
+        primaryStage.setOnCloseRequest(e -> close());
         primaryStage.setResizable(false);
         primaryStage.setScene(mainUIscene);
         primaryStage.setTitle("Tarkov Trader");
@@ -239,10 +246,10 @@ public class TarkovTrader extends Application {
     }
     
     
-    private void displayMessenger()
+    public void displayMessenger()
     {
-        messenger = new Messenger(worker);
-        messenger.display();
+        this.messenger = new Messenger(worker);
+        this.messenger.display();
     }
     
     
@@ -286,6 +293,11 @@ public class TarkovTrader extends Application {
     public Messenger getMessenger()
     {
         return this.messenger;
+    }
+    
+    public static void createMessenger()
+    {
+        
     }
     
     public void close()

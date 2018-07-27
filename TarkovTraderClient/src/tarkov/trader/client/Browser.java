@@ -63,6 +63,8 @@ public class Browser {
     private boolean isPopulated;
     private boolean pullSearchFlags;
     
+    private final String PRICE_MAX = "50000000";
+    
     
     public Browser(TarkovTrader trader, RequestWorker worker)
     {
@@ -247,7 +249,7 @@ public class Browser {
     {
         if (e.getClickCount() == 2)
         {
-            ItemDisplay itemdisplay = new ItemDisplay((ProcessedItem)table.getSelectionModel().getSelectedItem());
+            ItemDisplay itemdisplay = new ItemDisplay(trader, worker, (ProcessedItem)table.getSelectionModel().getSelectedItem());
         }
     }
     
@@ -372,9 +374,13 @@ public class Browser {
                 priceMin = "200000";
                 priceMax = "300000";
                 break;
+            case 5:
+                priceMin = "300000";
+                priceMax = PRICE_MAX;
+                break;
             default:  // Catches "All" flag  --  Also used by the WTB flag. WTB flag sets Price flag to "All" or else WTB posts will not return in the query results.
                 priceMin = "0";
-                priceMax = "50000000";
+                priceMax = PRICE_MAX;
         }
         
         

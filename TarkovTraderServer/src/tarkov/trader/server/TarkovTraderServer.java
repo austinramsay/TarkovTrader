@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import tarkov.trader.objects.HeartbeatForm;
+import tarkov.trader.objects.SyncForm;
 
 public class TarkovTraderServer {
 
@@ -22,7 +23,11 @@ public class TarkovTraderServer {
     public final static String dbDriver = "com.mysql.cj.jdbc.Driver";
     private String command;
     
-    public static HashMap<String, RequestWorker> authenticatedUsers;   // <Username, Respective worker>
+    private static volatile ArrayList<String> userList;
+    public static volatile HashMap<String, RequestWorker> authenticatedUsers;   // < Username, User's respective worker >
+    
+    private static boolean userListSyncInProgress = false;
+    private static boolean onlineListSyncInProgress = false;
     
     
     public static void main(String[] args) 
@@ -60,6 +65,8 @@ public class TarkovTraderServer {
         while (!verifyDBconnection());
         
         setDBparameters(definedDbIpAddr, definedDbName, definedDbUsername, definedDbPassword);
+        
+        TarkovTraderServer.syncUserList();
         
         Thread networker = new Thread(networking);
         networker.start();
@@ -103,6 +110,91 @@ public class TarkovTraderServer {
         }
     }
     
+    
+    public synchronized static void syncUserList()
+    {
+        // When a new account is created, or the server is started
+        // The ArrayList containing Strings of all usernames should be updated
+        // This will be sent to users on login
+        // Or pushed to all online clients when a new account is created for the most updated list client-side
+        
+        // Sync in progress lock
+        TarkovTraderServer.userListSyncInProgress = true;
+        
+        // Because a new account has been added into the database, get the latest info
+        DatabaseWorker dbWorker = new DatabaseWorker();
+        ArrayList<String> pulledUserList = dbWorker.pullUserList();
+        
+        // Set the static arraylist equal to the latest pulled list
+        TarkovTraderServer.userList = pulledUserList;
+        
+        // Build the SyncForm to push to all online clients
+        ArrayList<String> syncFlags = new ArrayList<>();
+        syncFlags.add("fulluserlist");
+        
+        SyncForm syncinfo = new SyncForm(syncFlags);
+        syncinfo.setFullUserList(TarkovTraderServer.userList);
+        
+        // Get all online users workers, send the SyncForm
+        for (Map.Entry<String, RequestWorker> client : TarkovTraderServer.authenticatedUsers.entrySet())
+        {
+            RequestWorker tempWorker = client.getValue();
+            tempWorker.sendForm(syncinfo);
+            tempWorker = null;
+        }
+        
+        // Sync in progress lock
+        TarkovTraderServer.userListSyncInProgress = false;
+    }
+    
+    
+    @SuppressWarnings("empty-statement")
+    public synchronized static ArrayList<String> getUserList()
+    {
+        while (TarkovTraderServer.userListSyncInProgress)
+        {
+            // Sync in progress, wait until sync is complete to return correct user list
+            ;
+        }
+        
+        return TarkovTraderServer.userList;
+    }
+    
+    
+    public synchronized static void syncOnlineList()
+    {
+        // This method ONLY pushes the latest online list to all available clients
+
+        // Prepare the SyncForm
+        ArrayList<String> syncFlags = new ArrayList<>();
+        syncFlags.add("onlineuserlist");
+        SyncForm syncinfo = new SyncForm(syncFlags);        
+        
+        // Prepare to pack arraylist to be set into SyncForm
+        ArrayList<String> onlineUsers = TarkovTraderServer.getOnlineList();   
+        syncinfo.setOnlineUserList(onlineUsers);
+        
+        // Push to available clients
+        for (Map.Entry<String, RequestWorker> client : TarkovTraderServer.authenticatedUsers.entrySet())
+        {
+            RequestWorker tempWorker = client.getValue();
+            tempWorker.sendForm(syncinfo);
+            tempWorker = null;
+        }
+    }
+    
+    
+    public synchronized static ArrayList<String> getOnlineList()
+    {
+        ArrayList<String> onlineUsers = new ArrayList<>();
+        
+        for (Map.Entry<String, RequestWorker> entry : TarkovTraderServer.authenticatedUsers.entrySet())
+        {
+            onlineUsers.add(entry.getKey());
+        }        
+        
+        return onlineUsers;
+    }
     
     private void openCommandLine()
     {

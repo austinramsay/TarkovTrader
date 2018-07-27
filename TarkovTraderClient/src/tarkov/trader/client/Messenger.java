@@ -2,9 +2,14 @@
 package tarkov.trader.client;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.function.Predicate;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -16,12 +21,16 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.util.Callback;
 import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.Message;
 
@@ -84,7 +93,7 @@ public class Messenger {
         messagesIcon = new Image(this.getClass().getResourceAsStream("/messagesicon.png"), 24, 24, true, true);
         messagesIconViewer = new ImageView(messagesIcon);
 
-        newIcon = new Image(this.getClass().getResourceAsStream("/new.png"), 24, 24, true, true);
+        newIcon = new Image(this.getClass().getResourceAsStream("/addmid.png"), 24, 24, true, true);
         newIconViewer = new ImageView(newIcon);
         
         cancelIcon = new Image(this.getClass().getResourceAsStream("/cancel.png"));
@@ -92,8 +101,14 @@ public class Messenger {
     }
     
     
-    public void display()
+    public boolean display()
     {
+        if (Messenger.isOpen)
+        {
+            Alert.display(null, "Messenger already open.");
+            return false;
+        }
+        
         messenger = new Stage();
         
         
@@ -124,11 +139,14 @@ public class Messenger {
                 {
                     this.setText(chat.getName(TarkovTrader.username));
                     this.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/chat.png"), 24, 24, true, true)));
+                    this.setGraphicTextGap(15);
                     this.setPrefHeight(45);
+                    this.setOnMouseClicked(e -> { 
+                        unpackChatMessages(chat.getMessages());
+                    });
                 }
             }
         });
-        chatListView.setOnMouseClicked(e -> unpackChatMessages(chatListView.getSelectionModel().getSelectedItem().getMessages()));
         
         
         // Text fields/areas
@@ -139,6 +157,7 @@ public class Messenger {
         chatDisplay.getStyleClass().add("chatDisplay");
         
         chatInput = new TextField();
+        chatInput.setOnAction(e -> send());
         
         
         // Buttons
@@ -152,6 +171,7 @@ public class Messenger {
         cancel = new Button("Return");
         cancel.setGraphic(cancelIconViewer);
         cancel.setOnAction(e -> close());
+        
         
         
         //Layout construction begin
@@ -211,16 +231,17 @@ public class Messenger {
         messenger.setResizable(false);
         messenger.setTitle("Messenger");
         messenger.getIcons().add(icon);
-        messenger.setOnCloseRequest(e -> messenger.close());
+        messenger.setOnCloseRequest(e -> close());
         Messenger.isOpen = true;
         messenger.show();     
       
         // After stage is displayed, resize text fields/areas
         resizeFields();
         
-        
         // Finally, pull fresh chat list from the server
-        pullChatList();
+        sync();
+        
+        return true;
     }
     
     
@@ -269,40 +290,175 @@ public class Messenger {
     {
         Stage prompt = new Stage();
         
-        Label newChatUsernameLabel = new Label("Username:");
+
+        // TabPane for switching between All Users / Online Users
+        TabPane userLookupPane = new TabPane();
+        Tab fullUsersTab = new Tab("All Users");
+        Tab onlineUsersTab = new Tab("Online Users:");
+        userLookupPane.getTabs().addAll(fullUsersTab, onlineUsersTab);         
         
-        TextField newChatUsernameInput = new TextField();
-        newChatUsernameInput.setPromptText("Destination");
         
+        // Search label
+        Label searchLabel = new Label("Search:");
+        
+        
+        // Search input text field
+        TextField searchInput = new TextField();
+        searchInput.setPromptText("Username");
+        
+        
+        // Create button
         Button createNewChat = new Button("Create");
-        createNewChat.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/new.png"), 24, 24, true, true))); 
-        createNewChat.setOnAction(e -> 
-            {
-                if (!newChatUsernameInput.getText().equals(""))
-                {
-                    buildNewChat(newChatUsernameInput.getText());
-                    prompt.close();
-                }
-                else
-                    Alert.displayNotification(null, "No username was entered!", 5);
-            });
+        createNewChat.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/addsmall.png"), 16, 16, true, true))); 
         
+        
+        // Cancel button
         Button cancelNewChat = new Button("Return");
-        cancelNewChat.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/cancel.png"), 24, 24, true, true))); 
+        cancelNewChat.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/cancelsmall.png"), 16, 16, true, true))); 
         cancelNewChat.setOnAction(e -> prompt.close());
         
-        HBox newChatCenterDisplay = new HBox(8);
-        newChatCenterDisplay.setAlignment(Pos.CENTER);
-        newChatCenterDisplay.getChildren().addAll(newChatUsernameLabel, newChatUsernameInput);
         
-        HBox newChatButtonBox = new HBox(10);
-        newChatButtonBox.setAlignment(Pos.CENTER);
-        newChatButtonBox.getChildren().addAll(createNewChat, cancelNewChat);
         
+        //     *****UNIVERSAL LIST VIEW CELL FACTORY*****
+        //     To be used by cell factories of both All/Online user list views
+        Callback usernameCellCallback = new Callback<ListView<String>, ListCell<String>>() {
+            @Override
+            public ListCell<String> call(ListView<String> param)
+            {
+                ListCell<String> cell = new ListCell<String>()
+                {
+                    @Override
+                    protected void updateItem(String username, boolean empty)
+                    {
+                        if (username != null) 
+                        {
+                            super.updateItem(username, empty);
+                        
+                            if (!username.equals(""))
+                            {
+                                this.setText(username);
+                                this.setPrefHeight(35);
+                                this.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                                    @Override
+                                    public void handle(MouseEvent e)
+                                    {
+                                        if (e.getClickCount() == 2)
+                                        {
+                                            // Check if this chat is already created
+                                            if (!chatExists(username))
+                                            {
+                                                // Chat doesn't exist, build now
+                                                buildNewChat(username);
+                                                prompt.close();
+                                            }
+                                            else
+                                            {
+                                                // This chat already exists..
+                                                Platform.runLater(() -> Alert.display(null, "A chat for " + username + " already exists."));          
+                                            }
+                                        }
+                                    }
+                                });
+                            }   
+                        }
+                        else
+                        {
+                            super.updateItem(null, empty);
+                            this.setText(null);
+                            this.setOnMouseClicked(null);
+                        }
+                    }
+                };
+                return cell;        
+            }
+        };
+        
+        //     *****END CELL FACTORY*****
+        //     *****************************************************
+        
+        
+        // Observable and filtered lists for both ListView's (ALL & ONLINE)
+        ObservableList<String> fullList = FXCollections.observableArrayList(TarkovTrader.userList);
+        if (fullList.contains(TarkovTrader.username))
+            fullList.remove(TarkovTrader.username);
+        
+        ObservableList<String> onlineList = FXCollections.observableArrayList(TarkovTrader.onlineList);
+        if (onlineList.contains(TarkovTrader.username))
+            onlineList.remove(TarkovTrader.username);
+        
+        FilteredList<String> allFilteredList = new FilteredList<>(fullList, getAllUsernamesPredicate());
+        FilteredList<String> onlineFilteredList = new FilteredList<>(onlineList, getAllUsernamesPredicate());
+        
+        
+        // Upon text change in the search filter box being changed, apply the necessary predicate to the filtered list
+        searchInput.textProperty().addListener(obs ->
+        {
+            String filter = searchInput.getText(); 
+            
+            if(filter == null || filter.length() == 0) 
+            {
+                allFilteredList.setPredicate(getAllUsernamesPredicate());
+                onlineFilteredList.setPredicate(getAllUsernamesPredicate());
+            }
+            
+            else 
+            {
+                allFilteredList.setPredicate(getFilteredPredicate(searchInput.getText()));
+                onlineFilteredList.setPredicate(getFilteredPredicate(searchInput.getText()));
+            }
+        });    
+        
+        
+        // Sorted list for the completed ALL USERS filtered list
+        SortedList<String> fullUsersSortedList = new SortedList<>(allFilteredList, new Comparator<String>() {
+            @Override
+            public int compare(String arg1, String arg2)
+            {
+                return arg1.compareToIgnoreCase(arg2);
+            }
+        });
+        
+        
+        // Sorted list for the completed ONLINE filtered list
+        SortedList<String> onlineUsersSortedList = new SortedList<>(onlineFilteredList, new Comparator<String>() {
+            @Override
+            public int compare(String arg1, String arg2)
+            {
+                return arg1.compareToIgnoreCase(arg2);
+            }
+        });       
+        
+        
+        // Build the list view of ALL usernames to use the sorted and filtered list -- Build the cells
+        ListView<String> fullUserList = new ListView<>();
+        fullUserList.setItems(allFilteredList);
+        fullUserList.setCellFactory(usernameCellCallback);
+        
+        
+        // Build the list view of ONLINE usernames to use the sorted and filtered list -- Build the cells
+        ListView<String> onlineUserList = new ListView<>();
+        onlineUserList.setItems(onlineUsersSortedList);
+        onlineUserList.setCellFactory(usernameCellCallback);
+
+        
+        // HBox housing the Search label and input field
+        HBox searchDisplay = new HBox(8);
+        searchDisplay.setAlignment(Pos.CENTER);
+        searchDisplay.getChildren().addAll(searchLabel, searchInput);
+        
+        
+        // Root layout VBox
         VBox newChatRoot = new VBox(11);
         newChatRoot.setPadding(new Insets(10));
-        newChatRoot.getChildren().addAll(newChatCenterDisplay, newChatButtonBox);
+        newChatRoot.getChildren().addAll(searchDisplay, userLookupPane);
         
+        
+        // Now that content has been built for the tabs, set the tab content
+        onlineUsersTab.setContent(onlineUserList);
+        fullUsersTab.setContent(fullUserList);
+        
+        
+        // Scene / Stage setup
         Scene newChatScene = new Scene(newChatRoot);
         newChatScene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         
@@ -313,16 +469,61 @@ public class Messenger {
         return prompt;
     }
     
+   
+    // Predicate returns true for all usernames
+    private Predicate<String> getAllUsernamesPredicate()
+    {
+        Predicate<String> predicate = new Predicate<String>() {
+            
+            @Override
+            public boolean test(String username)
+            {
+                return true;
+            } 
+            
+        };
+        
+        return predicate;
+    }
+        
+        
+    // Predicate returns true if the username list contains a name according to search filter input
+    Predicate<String> getFilteredPredicate(String searchInput) 
+    {
+        Predicate<String> predicate = new Predicate<String>() {
+        
+            @Override
+            public boolean test(String username)
+            {
+                return (username.contains(searchInput));
+            }
+            
+        };
+        
+        return predicate;
+    };         
+    
     
     private boolean buildNewChat(String destination)
     {
-        // TODO: Check if username exists -- and if user is online
-        
         Chat newchat = new Chat(TarkovTrader.username, destination, null);
         chatListView.getItems().add(newchat);
         chatListView.getSelectionModel().select(newchat);
         
         chatDisplay.setText("New chat to: " + newchat.getDestination());
+        
+        return true;
+    }
+    
+    
+    private boolean chatExists(String destination)
+    {
+        // Checks if a chat with the corresponding destination name already exists
+        for (Chat openChat : chatListView.getItems())
+        {
+            if (openChat.getName(TarkovTrader.username).equals(destination))
+                return true;
+        }
         
         return false;
     }
@@ -332,6 +533,7 @@ public class Messenger {
     {
         Chat currentChat = chatListView.getSelectionModel().getSelectedItem();
         String message = TarkovTrader.username + ": " + chatInput.getText();
+        
         if (message.equals(""))
             return false;
         
@@ -356,8 +558,8 @@ public class Messenger {
             Message messageform = new Message(TarkovTrader.username, currentChat.getName(TarkovTrader.username), message);
             if (worker.sendForm(messageform))
             {
-                currentChat.appendMessage(message);
                 append(message);
+                chatListView.getSelectionModel().getSelectedItem().appendMessage(message);
             }
             chatInput.setText("");
             return true;
@@ -372,11 +574,11 @@ public class Messenger {
         if (chatDisplay.getText() == null)
             chatDisplay.appendText(message);
         else
-            chatDisplay.appendText("\n" + message);    
+            chatDisplay.appendText("\n\n" + message);     
     }
     
     
-    private boolean pullChatList()
+    private boolean sync()
     {
         // Build a form of type 'chatlist'
         // Server responds with full list and requestworker will populate the listview
@@ -384,7 +586,10 @@ public class Messenger {
         
         
         if (worker.sendForm(requestchatform))
+        {
+            TarkovTrader.syncInProgress = true;
             return true;
+        }
         
         
         Platform.runLater(() -> Alert.display(null, "Failed to request chat list from server."));
@@ -403,6 +608,7 @@ public class Messenger {
         {
             if (chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username).equals(sender))
             {
+                chatListView.getSelectionModel().getSelectedItem().appendMessage(message);
                 append(message);
             }
             else
@@ -417,6 +623,37 @@ public class Messenger {
     }
     
     
+    public static void contactSeller(Messenger messenger, String destination, String itemName)
+    {
+        while (TarkovTrader.syncInProgress)
+        {
+            // Might still be pulling chat list, wait until done so we can properly check if a chat exists
+            ;
+        }
+        
+        if (messenger.chatExists(destination))
+        {
+            // Chat exists, select the chat for the user
+            for (Chat openChat : messenger.chatListView.getItems())
+            {
+                if (openChat.getName(TarkovTrader.username).equals(destination))
+                {
+                    messenger.chatListView.getSelectionModel().select(openChat);
+                    messenger.unpackChatMessages(openChat.getMessages());
+                    break;
+                }   
+            }
+        }
+        else 
+        {
+            messenger.buildNewChat(destination);
+        }
+        
+        messenger.chatInput.setText("Hey " + destination + ". Interested in your '" + itemName + "'.");
+        messenger.chatInput.setOnMouseClicked(e -> messenger.chatInput.clear());        
+    }
+    
+    
     private void close()
     {
         Messenger.isOpen = false;
@@ -424,3 +661,8 @@ public class Messenger {
     }
     
 }
+
+
+
+
+

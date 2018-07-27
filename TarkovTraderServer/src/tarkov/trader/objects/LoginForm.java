@@ -2,7 +2,7 @@
 package tarkov.trader.objects;
 
 import java.io.File;
-import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
  *
@@ -18,14 +18,18 @@ public class LoginForm extends Form {
     private boolean authenticated;
     private File userImageFile;
     
+    private ArrayList<String> userList;
+    private ArrayList<String> onlineList;
+    
     
     public LoginForm(String username, String hashedPassword)
     {
         this.type = "login";
-        this.flags = new HashMap();
         this.username = username;
         this.hashedPassword = hashedPassword;
         this.authenticated = false;
+        userList = new ArrayList<>();
+        onlineList = new ArrayList<>();
     }
     
     
@@ -67,6 +71,18 @@ public class LoginForm extends Form {
     }
     
     
+    public ArrayList<String> getUserList()
+    {
+        return userList;
+    }
+    
+    
+    public ArrayList<String> getOnlineList()
+    {
+        return onlineList;
+    }
+    
+    
     
     // Setters:
     
@@ -103,6 +119,18 @@ public class LoginForm extends Form {
     public void setUserImageFile(File userImageFile)
     {
         this.userImageFile = userImageFile;
+    }
+    
+    
+    public void setUserList(ArrayList<String> userList)
+    {
+        this.userList = userList;
+    }
+    
+    
+    public void setOnlineList(ArrayList<String> onlineList)
+    {
+        this.onlineList = onlineList;
     }
 
 }

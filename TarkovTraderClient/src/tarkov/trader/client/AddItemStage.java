@@ -221,6 +221,7 @@ public class AddItemStage {
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         addItemStage.setTitle("Create an Item Listing");
         addItemStage.getIcons().add(Resources.icon);
+        addItemStage.setOnCloseRequest(e -> close());
         addItemStage.setScene(scene);
         addItemStage.setResizable(false);
         addItemStage.show();

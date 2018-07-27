@@ -17,6 +17,9 @@ import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.Message;
 
 
+// TODO: Replace map checks with isOnline() functions for readability
+
+
 public class RequestWorker implements Runnable {
     
     private DatabaseWorker dbWorker;
@@ -64,6 +67,7 @@ public class RequestWorker implements Runnable {
             {
                 syncCache();
                 TarkovTraderServer.authenticatedUsers.remove(clientUsername);
+                TarkovTraderServer.syncOnlineList();  // User disconnected, push latest online user list to all available clients
             }
             // TODO: HANDLE A CLOSED CONNECTION
         }
@@ -115,7 +119,10 @@ public class RequestWorker implements Runnable {
                 NewAccountForm newAccountInfo = (NewAccountForm)form;
                 
                 if (verifyClientAccountInfo(newAccountInfo))
+                {
                      dbWorker.insertAccountInfo(newAccountInfo, clientIp);
+                     TarkovTraderServer.syncUserList();  // When a new account is added, the main server needs to be updated so an accurate username list is sent to new client logins
+                }
                 
                 break;
                 
@@ -294,15 +301,35 @@ public class RequestWorker implements Runnable {
     
     private boolean authenticateLogin(LoginForm login)
     {
-       if (dbWorker.loginAuthenticated(login))
-       {
-            HashMap<String,String> clientInfo = dbWorker.getAuthenticatedClientInfo(login);
+        // Multiple logins won't authenticate, check if the username already exists in the map
+        if (TarkovTraderServer.authenticatedUsers.containsKey(login.getUsername()))
+        {
+            login.setAuthenticationState(false);
+            
+            if (sendForm(login))
+            {
+                System.out.println("Request: Multiple logins for: " + login.getUsername() + ". Current assigned IP is: " + TarkovTraderServer.authenticatedUsers.get(login.getUsername()).clientIp + ". Attempted IP: " + clientIp);
+                communicator.sendAlert("This username is already signed in.");
+                return false;
+            }
+        }
+        
+        
+        if (dbWorker.loginAuthenticated(login))
+        {
+            // Upon client authentication, send all necessary information needed by client features through the login form to be unpacked by client request worker
+            
+            HashMap<String, String> clientInfo = dbWorker.getAuthenticatedClientInfo(login);
             File userImageFile = dbWorker.getUserImageFile(login.getUsername());
+            ArrayList<String> userList = TarkovTraderServer.getUserList();
+            ArrayList<String> onlineList = TarkovTraderServer.getOnlineList();
             
             login.setAuthenticationState(true);
             login.setIgn(clientInfo.get("ign"));
             login.setTimezone(clientInfo.get("timezone"));
             login.setUserImageFile(userImageFile);
+            login.setUserList(userList);
+            login.setOnlineList(onlineList);
                     
             if (sendForm(login)) 
             {
@@ -313,6 +340,8 @@ public class RequestWorker implements Runnable {
                 // Pull client chats from the DB
                 chatmap = dbWorker.pullChatMap(login.getUsername());   // Will never need to initialize because this is stored upon account creation
                 messageCache = new HashMap<>();
+                
+                TarkovTraderServer.syncOnlineList();
                 
                 return true;
             }
@@ -341,7 +370,7 @@ public class RequestWorker implements Runnable {
         if (this.clientUsername != null)
         {
             // Should already be verified if the worker knows the username, but just double check the static authenticated users map to match username and IP
-            if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
+            if (isOnline(clientUsername))
             {
                 return (TarkovTraderServer.authenticatedUsers.get(clientUsername).clientIp.equals(clientIp));
             }
@@ -422,7 +451,6 @@ public class RequestWorker implements Runnable {
     // Pulls the most recent chat map stored in the database, and iterates through all the chats to add into an arraylist. Then pushes the most recent list to the client
     public void syncChats()
     {
-        
         if (!messageCache.isEmpty())
         {
             syncCache();
@@ -501,7 +529,10 @@ public class RequestWorker implements Runnable {
         // Hashmap with key being the other parties name, and the arraylist of messages
         
         if (messageCache.isEmpty())
+        {
+            System.out.println("Client " + clientIp + " message cache empty. Skipping sync.");
             return false;
+        }
         
                 
         System.out.println("Syncing cached messages for " + clientIp + "...");

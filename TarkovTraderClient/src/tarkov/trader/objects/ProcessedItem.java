@@ -222,4 +222,10 @@ public class ProcessedItem {
     {
         return item.getDate();
     }
+    
+    
+    public String getSellerState()
+    {
+        return item.getSellerState();
+    }
 }
