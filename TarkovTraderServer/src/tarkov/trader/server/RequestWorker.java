@@ -17,9 +17,6 @@ import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.Message;
 
 
-// TODO: Replace map checks with isOnline() functions for readability
-
-
 public class RequestWorker implements Runnable {
     
     private DatabaseWorker dbWorker;
@@ -61,15 +58,7 @@ public class RequestWorker implements Runnable {
         }
         catch (IOException e)
         {
-            System.out.println("Client " + clientIp + " has disconnected.");
-            
-            if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
-            {
-                syncCache();
-                TarkovTraderServer.authenticatedUsers.remove(clientUsername);
-                TarkovTraderServer.syncOnlineList();  // User disconnected, push latest online user list to all available clients
-            }
-            // TODO: HANDLE A CLOSED CONNECTION
+            disconnect();
         }
         catch (ClassNotFoundException e)
         {
@@ -353,7 +342,7 @@ public class RequestWorker implements Runnable {
             if (sendForm(login))
             {
                 System.out.println("Request: Failed user authentication for: " + clientIp);
-                communicator.sendAlert("Failed account authentication. Check credentials.");
+                communicator.sendAlert("Check credentials. Credentials are case-sensitive.");
                 return false;
             }
         }
@@ -577,4 +566,17 @@ public class RequestWorker implements Runnable {
             return false;
     }
     
+
+    private void disconnect()
+    {
+        System.out.println("Client " + clientIp + " has disconnected.");
+            
+        if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
+        {
+            syncCache();
+            TarkovTraderServer.authenticatedUsers.remove(clientUsername);
+            TarkovTraderServer.syncOnlineList();  // User disconnected, push latest online user list to all available clients
+        }
+        // TODO: HANDLE A CLOSED CONNECTION    
+    }
 }

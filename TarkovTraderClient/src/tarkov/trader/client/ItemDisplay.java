@@ -156,18 +156,19 @@ public class ItemDisplay {
         contactButton.setOnAction(e -> {
             
             Messenger messenger;
-            
-            if (!Messenger.isOpen)
-            {
-                trader.displayMessenger();
-                messenger = trader.getMessenger();
-            }
-            else
+
+            if (Messenger.isOpen)
             {
                 // Get messenger
                 messenger = trader.getMessenger();
             }
-            
+            else
+            {
+                messenger = new Messenger(worker);
+                messenger.display();
+                trader.setMessenger(messenger);      
+            }
+
             Messenger.contactSeller(messenger, item.getUsername(), item.getName());
             
             itemdisplay.close();
@@ -183,6 +184,13 @@ public class ItemDisplay {
         returnButton = new Button("Return");
         returnButton.setGraphic(cancelIconViewer);
         returnButton.setOnAction(e -> itemdisplay.close());
+        
+        if (TarkovTrader.username.equals(item.getUsername()))
+        {
+            // If the posting's username is the client, disable all action buttons
+            contactButton.setDisable(true); 
+            flagButton.setDisable(true);
+        }
         
         
         // Layout deisgn

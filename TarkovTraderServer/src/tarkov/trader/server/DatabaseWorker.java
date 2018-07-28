@@ -212,8 +212,8 @@ public class DatabaseWorker
         
     public boolean loginAuthenticated(LoginForm loginform)
     {
-        String saltCommand = "SELECT salt FROM accounts WHERE username=?;";
-        String passwordCommand = "SELECT password FROM accounts WHERE username=?;";
+        String saltCommand = "SELECT salt FROM accounts WHERE BINARY username=?;";
+        String passwordCommand = "SELECT password FROM accounts WHERE BINARY username=?;";
         
         Connection dbConnection = null;
         PreparedStatement statement = null;
@@ -229,17 +229,24 @@ public class DatabaseWorker
         {
             dbConnection = this.getDBconnection();
             
+            // Get salt first to hash the users input password
             statement = dbConnection.prepareStatement(saltCommand);
             statement.setString(1, loginform.getUsername());
             result = statement.executeQuery();
-            result.first();
+            
+            if (!result.first())
+                return false;
+            
             storedSalt = result.getBytes(1);
             
+            // Get hashed password from DB
             statement = null;
             statement = dbConnection.prepareStatement(passwordCommand);
             statement.setString(1, loginform.getUsername());
             result = statement.executeQuery();
-            result.first();
+            
+            if (!result.first())
+                return false;
             
             return(this.getHashedPassword(loginform.getHashedPassword(), storedSalt).equals(result.getString(1)));
         }

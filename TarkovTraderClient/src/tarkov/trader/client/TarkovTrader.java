@@ -2,6 +2,7 @@ package tarkov.trader.client;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -64,7 +65,7 @@ public class TarkovTrader extends Application {
     public static File userImageFile;
     public static boolean connected;
     public static volatile boolean authenticated;
-    public static volatile boolean syncInProgress;
+    public static AtomicBoolean syncInProgress;
     
     public static volatile ArrayList<String> currentChats;
     public static volatile ArrayList<String> userList;
@@ -79,7 +80,7 @@ public class TarkovTrader extends Application {
         
         TarkovTrader.connected = false;
         TarkovTrader.authenticated = false;
-        TarkovTrader.syncInProgress = false;
+        syncInProgress = new AtomicBoolean(false);
         
         currentChats = new ArrayList<>();
         userList = new ArrayList<>();
@@ -295,10 +296,12 @@ public class TarkovTrader extends Application {
         return this.messenger;
     }
     
-    public static void createMessenger()
+    
+    public void setMessenger(Messenger messenger)
     {
-        
+        this.messenger = messenger;
     }
+    
     
     public void close()
     {

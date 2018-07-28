@@ -4,6 +4,8 @@ package tarkov.trader.client;
 import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import javafx.application.Platform;
 import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
@@ -165,18 +167,33 @@ public class RequestWorker implements Runnable
                 ChatListForm chatlistform = (ChatListForm)processedRequest;
                 
                 if (Messenger.isOpen)
-                {
+                {   
+                    FutureTask<Void> updateChatList = new FutureTask(() -> {
                         Messenger tempMessenger = trader.getMessenger();
                         int currentIndex = tempMessenger.chatListView.getSelectionModel().getSelectedIndex();
                         tempMessenger.populate(chatlistform.getChatList());
                         tempMessenger.chatListView.getSelectionModel().select(currentIndex);
-                        TarkovTrader.syncInProgress = false;
+                    }, null);
+                    
+                    Platform.runLater(updateChatList);  // RequestWorker needs access to the JavaFX application thread
+                    
+                    try { 
+                        updateChatList.get(); // Wait until the ListView has been populated before setting 'syncInProgress' to false again
+                    }
+                    catch (InterruptedException e) { 
+                        Alert.display(null, "Sync interrupted.");
+                    }
+                    catch (ExecutionException e) { 
+                        Alert.display(null, "Sync failed.");
+                    }
+                    
+                    TarkovTrader.syncInProgress.compareAndSet(true, false);
                 }
                 
                 else
                 {
-                    Platform.runLater(() -> Alert.display(null, "New chat received"));
-                    TarkovTrader.syncInProgress = false;
+                    Platform.runLater(() -> Alert.display(null, "New chat received."));
+                    TarkovTrader.syncInProgress.compareAndSet(true, false);
                 }                
                 
                 break;

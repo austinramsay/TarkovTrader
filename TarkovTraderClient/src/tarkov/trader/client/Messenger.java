@@ -3,12 +3,17 @@ package tarkov.trader.client;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
+import javafx.concurrent.Task;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -23,6 +28,7 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -77,11 +83,7 @@ public class Messenger {
         this.worker = worker;
         loadResources();
     }
-    
-    public Messenger(String destination)
-    {
-        // This should be used for calling 'Contact Seller' in an item listing
-    }
+
     
     private void loadResources()
     {
@@ -141,6 +143,7 @@ public class Messenger {
                     this.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/chat.png"), 24, 24, true, true)));
                     this.setGraphicTextGap(15);
                     this.setPrefHeight(45);
+                    this.setTooltip(new Tooltip("Right click for options"));
                     this.setOnMouseClicked(e -> { 
                         unpackChatMessages(chat.getMessages());
                     });
@@ -232,9 +235,9 @@ public class Messenger {
         messenger.setTitle("Messenger");
         messenger.getIcons().add(icon);
         messenger.setOnCloseRequest(e -> close());
-        Messenger.isOpen = true;
         messenger.show();     
-      
+        Messenger.isOpen = true;
+        
         // After stage is displayed, resize text fields/areas
         resizeFields();
         
@@ -587,7 +590,9 @@ public class Messenger {
         
         if (worker.sendForm(requestchatform))
         {
-            TarkovTrader.syncInProgress = true;
+            System.out.println("Sent the list request. Sync in progress: " + TarkovTrader.syncInProgress.get());            
+            TarkovTrader.syncInProgress.compareAndSet(false, true);
+            System.out.println("changed. Sync in progress: " + TarkovTrader.syncInProgress.get());       
             return true;
         }
         
@@ -625,32 +630,51 @@ public class Messenger {
     
     public static void contactSeller(Messenger messenger, String destination, String itemName)
     {
-        while (TarkovTrader.syncInProgress)
-        {
-            // Might still be pulling chat list, wait until done so we can properly check if a chat exists
-            ;
-        }
-        
-        if (messenger.chatExists(destination))
-        {
-            // Chat exists, select the chat for the user
-            for (Chat openChat : messenger.chatListView.getItems())
+        Task<Void> waitForSync = new Task<Void>() {
+            @Override
+            public Void call()
             {
-                if (openChat.getName(TarkovTrader.username).equals(destination))
+                while (TarkovTrader.syncInProgress.get())
                 {
-                    messenger.chatListView.getSelectionModel().select(openChat);
-                    messenger.unpackChatMessages(openChat.getMessages());
-                    break;
-                }   
+                    ; // Wait until sync is complete
+                }
+                return null;
             }
-        }
-        else 
-        {
-            messenger.buildNewChat(destination);
-        }
+        };
         
-        messenger.chatInput.setText("Hey " + destination + ". Interested in your '" + itemName + "'.");
-        messenger.chatInput.setOnMouseClicked(e -> messenger.chatInput.clear());        
+        waitForSync.setOnSucceeded(e -> {
+            
+            while (TarkovTrader.syncInProgress.get())
+            {
+                ; // Wait until sync is complete to check the latest chat list for an existing chat
+            }
+        
+            if (messenger.chatExists(destination))
+            {
+                // Chat exists, select the chat for the user
+                for (Chat openChat : messenger.chatListView.getItems())
+                {
+                    if (openChat.getName(TarkovTrader.username).equals(destination))
+                    {
+                        messenger.chatListView.getSelectionModel().select(openChat);
+                        messenger.unpackChatMessages(openChat.getMessages());
+                        break;
+                    }   
+                }
+            }
+            else 
+            {
+                messenger.buildNewChat(destination);
+            }
+        
+            messenger.chatInput.setText("Hey " + destination + ". Interested in your '" + itemName + "'.");
+            messenger.chatInput.setOnMouseClicked(me -> messenger.chatInput.clear());        
+        
+        });
+        
+        Thread t = new Thread(waitForSync);
+        t.setDaemon(true);
+        t.start();
     }
     
     
