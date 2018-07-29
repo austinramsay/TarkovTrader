@@ -15,6 +15,7 @@ import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemForm;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.Message;
+import tarkov.trader.objects.Notification;
 
 
 public class RequestWorker implements Runnable {
@@ -310,6 +311,7 @@ public class RequestWorker implements Runnable {
             
             HashMap<String, String> clientInfo = dbWorker.getAuthenticatedClientInfo(login);
             File userImageFile = dbWorker.getUserImageFile(login.getUsername());
+            ArrayList<Notification> notifications = dbWorker.getNotifications(login.getUsername());
             ArrayList<String> userList = TarkovTraderServer.getUserList();
             ArrayList<String> onlineList = TarkovTraderServer.getOnlineList();
             
@@ -317,6 +319,7 @@ public class RequestWorker implements Runnable {
             login.setIgn(clientInfo.get("ign"));
             login.setTimezone(clientInfo.get("timezone"));
             login.setUserImageFile(userImageFile);
+            login.setNotificationsList(notifications);
             login.setUserList(userList);
             login.setOnlineList(onlineList);
                     
@@ -329,6 +332,8 @@ public class RequestWorker implements Runnable {
                 // Pull client chats from the DB
                 chatmap = dbWorker.pullChatMap(login.getUsername());   // Will never need to initialize because this is stored upon account creation
                 messageCache = new HashMap<>();
+                
+                dbWorker.clearNotifications(login.getUsername());
                 
                 TarkovTraderServer.syncOnlineList();
                 
@@ -397,7 +402,7 @@ public class RequestWorker implements Runnable {
     // For processing new chats, messages, and dealing with the message cache
     */
     
-    private void processChat(Chat chat)
+    private boolean processChat(Chat chat)
     {
         if (chat.isNew)
         {
@@ -409,16 +414,20 @@ public class RequestWorker implements Runnable {
             
             // Insert chat into both users DB
             // First, update this user's chat map and sync
-            syncchatmap = dbWorker.pullChatMap(clientUsername);          // Pull most recent chat map for this user (should really be the same as the chatmap object in this class anyway, if not, something happened
-            syncchatmap.put(chat.getDestination(), chat);                // Insert this new chat into the map
-            dbWorker.insertChatMap(clientUsername, syncchatmap);         // Resinert to this users DB. Now we can sync
+            chatmap.put(destination, chat);                // Insert this new chat into the map
+            dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync
             syncChats();                                                 // Sync just for good measure
             syncchatmap = null;                                          // Close this map
                     
             // Now, update the receiving user's -- sync only if the user is online
             syncchatmap = dbWorker.pullChatMap(chat.getDestination());   // We pull the destination users chat map
+            if (syncchatmap.containsKey(clientUsername))
+            {
+                // This request worker's user must have deleted the chat while the destination still has it
+                // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+            }
             syncchatmap.put(chat.getOrigin(), chat);                     // Add this new chat
-            dbWorker.insertChatMap(chat.getDestination(), syncchatmap);  // Reinsert to destination users DB. Can now sync if online or pull new info upon login if offline
+            dbWorker.insertChatMap(chat.getDestination(), syncchatmap, false);  // Reinsert to destination users DB. Can now sync if online or pull new info upon login if offline
             syncchatmap = null;
             
             // Check if the user is online
@@ -431,9 +440,17 @@ public class RequestWorker implements Runnable {
                 communicator.sendAlert(chat.getDestination() + " is online. Notification sent.");          // Let THIS user know that the destination client is online and has received successfully
                 destinationWorker = null;                                                                  // Close the destinationWorker
             }
+            else
+            {
+                // User is offline, push to notifications
+                ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(destination);
+                dbWorker.insertNotifications(destination, addNotification(destinationNotifications, "chat"));                
+            }
             
             System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
         }
+        
+        return true;
     }
     
     
@@ -445,7 +462,7 @@ public class RequestWorker implements Runnable {
             syncCache();
         }
         
-        this.chatmap = dbWorker.pullChatMap(clientUsername);   // BUG: Pulling stored DB chatmap when there are cached messages that havent synced yet
+        this.chatmap = dbWorker.pullChatMap(clientUsername);  
         ChatListForm chatlistform = new ChatListForm();
         ArrayList<Chat> chatlist = new ArrayList<>();
         
@@ -476,6 +493,7 @@ public class RequestWorker implements Runnable {
         else   // The user has sent this message to someone else, forward to them
         {
             submitMessageToCache(destination, message);
+            ;
             if (isOnline(destination))
             {
                 // No need to push to other users DB, their message cache will handle this itself
@@ -485,8 +503,13 @@ public class RequestWorker implements Runnable {
             }
             else
             {
-                // Just push to the other users DB
+                // Just push to the other users DB and set notification
                 dbWorker.insertNewMessage(destination, clientUsername, message);
+                
+                // Check current destination notifications for already existing notification and add to count, or create one if not there
+                // Update destination users notifications DB
+                ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(destination);
+                dbWorker.insertNotifications(destination, addNotification(destinationNotifications, "message"));
             }
         }
     }
@@ -509,6 +532,7 @@ public class RequestWorker implements Runnable {
             messageCache.put(username, tempMessageCache);
             tempMessageCache = null;
         }
+   
     }
     
     
@@ -536,6 +560,10 @@ public class RequestWorker implements Runnable {
             Chat syncChat = chatmap.get(destination);
             ArrayList<String> currentMessages = syncChat.getMessages();
             
+            if (currentMessages == null)
+                currentMessages = new ArrayList<>();
+            
+            // Iterate the cached messages and append to the respective chat
             for (String cached : cachedMessages)
             {
                 counter++;
@@ -548,7 +576,7 @@ public class RequestWorker implements Runnable {
             chatmap.put(destination, syncChat);
         }
         
-        dbWorker.insertChatMap(clientUsername, chatmap);
+        dbWorker.insertChatMap(clientUsername, chatmap, false);
         
         messageCache.clear();
         
@@ -578,5 +606,43 @@ public class RequestWorker implements Runnable {
             TarkovTraderServer.syncOnlineList();  // User disconnected, push latest online user list to all available clients
         }
         // TODO: HANDLE A CLOSED CONNECTION    
+    }
+    
+    
+    
+    /* 
+    // NOTIFICATION SECTION
+    */
+    
+    private ArrayList<Notification> addNotification(ArrayList<Notification> notificationsList, String notificationType)
+    {
+        Notification tempNotification = null;
+        
+        for (Notification notification : notificationsList)
+        {
+            if (notification.getOriginUsername().equals(clientUsername) && notification.getNotificationType().equals(notificationType))
+            {
+                tempNotification = notification;
+                notificationsList.remove(notification);
+                break;
+            }
+        }
+        
+        if (tempNotification == null)
+        {
+            // No existing notification found, create a new one
+            tempNotification = new Notification(notificationType, clientUsername);
+        }
+        
+        if (notificationType.equals("message"))
+        {
+            int count = tempNotification.getCount();
+            count++;
+            tempNotification.setCount(count);
+        }
+        
+        notificationsList.add(tempNotification);
+        
+        return notificationsList;
     }
 }

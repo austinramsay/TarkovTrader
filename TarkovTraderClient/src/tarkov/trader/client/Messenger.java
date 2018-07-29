@@ -143,7 +143,7 @@ public class Messenger {
                     this.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/chat.png"), 24, 24, true, true)));
                     this.setGraphicTextGap(15);
                     this.setPrefHeight(45);
-                    this.setTooltip(new Tooltip("Right click for options"));
+                    this.setTooltip(new Tooltip("Right Click for Options"));
                     this.setOnMouseClicked(e -> { 
                         unpackChatMessages(chat.getMessages());
                     });
@@ -225,7 +225,7 @@ public class Messenger {
         border.setLeft(leftDisplay);
         border.setCenter(centerDisplay);
         
-
+        
         // Setup the stage and scene
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
@@ -293,7 +293,7 @@ public class Messenger {
     {
         Stage prompt = new Stage();
         
-
+        
         // TabPane for switching between All Users / Online Users
         TabPane userLookupPane = new TabPane();
         Tab fullUsersTab = new Tab("All Users");
@@ -442,7 +442,7 @@ public class Messenger {
         ListView<String> onlineUserList = new ListView<>();
         onlineUserList.setItems(onlineUsersSortedList);
         onlineUserList.setCellFactory(usernameCellCallback);
-
+        
         
         // HBox housing the Search label and input field
         HBox searchDisplay = new HBox(8);
@@ -536,8 +536,8 @@ public class Messenger {
     {
         Chat currentChat = chatListView.getSelectionModel().getSelectedItem();
         String message = TarkovTrader.username + ": " + chatInput.getText();
-        
-        if (message.equals(""))
+              
+        if (chatInput.getText().isEmpty())
             return false;
         
         if (currentChat == null)
@@ -547,24 +547,31 @@ public class Messenger {
             return false;
         }
             
-        if (currentChat.getMessages() == null)
+        // Determine if we are starting a new chat or sending a message
+        if (currentChat.isNew)
         {
-            // Starting a new chat
+            // Starting a new chat, append the message before sending to server
             currentChat.appendMessage(message);
-            worker.sendForm(currentChat);
-            chatInput.setText("");
-            return true;
+            
+            if (worker.sendForm(currentChat))
+            {
+                append(message);
+                chatInput.clear();
+                return true;
+            }
+            
         }
-        else if (currentChat.getMessages() != null)
+        else
         {
             // Using an open chat
             Message messageform = new Message(TarkovTrader.username, currentChat.getName(TarkovTrader.username), message);
             if (worker.sendForm(messageform))
-            {
+            {  
+                System.out.println("sent message");
                 append(message);
                 chatListView.getSelectionModel().getSelectedItem().appendMessage(message);
             }
-            chatInput.setText("");
+            chatInput.clear();
             return true;
         }
         
@@ -589,10 +596,8 @@ public class Messenger {
         
         
         if (worker.sendForm(requestchatform))
-        {
-            System.out.println("Sent the list request. Sync in progress: " + TarkovTrader.syncInProgress.get());            
-            TarkovTrader.syncInProgress.compareAndSet(false, true);
-            System.out.println("changed. Sync in progress: " + TarkovTrader.syncInProgress.get());       
+        {       
+            TarkovTrader.syncInProgress.compareAndSet(false, true);  
             return true;
         }
         
@@ -644,11 +649,6 @@ public class Messenger {
         
         waitForSync.setOnSucceeded(e -> {
             
-            while (TarkovTrader.syncInProgress.get())
-            {
-                ; // Wait until sync is complete to check the latest chat list for an existing chat
-            }
-        
             if (messenger.chatExists(destination))
             {
                 // Chat exists, select the chat for the user

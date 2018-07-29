@@ -149,6 +149,9 @@ public class RequestWorker implements Runnable
                 TarkovTrader.onlineList = unpackedLogin.getOnlineList();
                 LoginPrompt.acknowledged = true;
               
+                trader.startNotificationManager();
+                trader.getNotificationManager().processNotificationsList(unpackedLogin.getNotificationsList());
+                
                 break;
                 
                 

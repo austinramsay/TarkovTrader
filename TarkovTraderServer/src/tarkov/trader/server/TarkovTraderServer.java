@@ -151,6 +151,7 @@ public class TarkovTraderServer {
     @SuppressWarnings("empty-statement")
     public synchronized static ArrayList<String> getUserList()
     {
+        // BUG: THIS WILL BLOCK THE MAIN SERVER THREAD IF SYNC IS HAPPENING AND A USER IS WAITING
         while (TarkovTraderServer.userListSyncInProgress)
         {
             // Sync in progress, wait until sync is complete to return correct user list

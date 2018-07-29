@@ -17,6 +17,7 @@ import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.NewAccountForm;
+import tarkov.trader.objects.Notification;
 
 // DatabaseWorker class 
 // Handles all database work
@@ -127,16 +128,16 @@ public class DatabaseWorker
             statement = dbConnection.prepareStatement(command);
             statement.setString(1, onlyParameter);
             result = statement.executeQuery();
-            if (result != null)
+            if (result.next())
             {
-                result.first();
                 return result.getBytes(columnName);
             }
-            return null;
+            else
+                return null;
         }
         catch (SQLException e)
         {
-            System.out.println("DBWorker: Failed to perform simple object query. Given command: " + command + ". Error: " + e.getMessage());
+            System.out.println("DBWorker: Failed to perform simple blob query. Given command: " + command + ". Error: " + e.getMessage());
             return null;
         }
         finally 
@@ -180,7 +181,6 @@ public class DatabaseWorker
             {
                 // Iterate results of usernames, add to the arraylist to be returned
                 userList.add(result.getString("username"));
-                System.out.println("added to user list: " + result.getString("username"));
             }
             
             return userList;
@@ -405,8 +405,10 @@ public class DatabaseWorker
     {        
         String accountcommand = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, image, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
         String chatcommand = "INSERT INTO chats (Username, ChatMap) VALUES (?, ?);";
+        String notificationscommand = "INSERT INTO notifications (Username, Notifications) VALUES (?, ?);";
         
         HashMap<String, Chat> newaccountchatmap = new HashMap<>();
+        ArrayList<Notification> newnotificationlist = new ArrayList<>();
         
         Connection dbConnection = null;
         PreparedStatement statement = null;
@@ -428,12 +430,18 @@ public class DatabaseWorker
             statement.executeUpdate();
             
             statement = null;
-            statement = dbConnection.prepareCall(chatcommand);
+            statement = dbConnection.prepareStatement(chatcommand);
             statement.setString(1, newAccount.getUsername());
             statement.setObject(2, newaccountchatmap);
             statement.executeUpdate();
             
-            System.out.println("DBWorker: New account success from: " + clientIp);
+            statement = null;
+            statement = dbConnection.prepareStatement(notificationscommand);
+            statement.setString(1, newAccount.getUsername());
+            statement.setObject(2, newnotificationlist);
+            statement.executeUpdate();
+            
+            System.out.println("DBWorker: New account success for: " + clientIp);
             communicator.sendAlert("Account successfully created.");
         }
         catch (SQLException e)
@@ -645,10 +653,16 @@ public class DatabaseWorker
     // Chats: deals with inserting new chats, and pulling chat list requests
     */
     
-    // This should only be called on client disconnection
-    public boolean insertChatMap(String username, HashMap<String, Chat> chatmap)
+    public boolean insertChatMap(String username, HashMap<String, Chat> chatmap, boolean insert)
     {
-        String command = "UPDATE chats SET ChatMap = ? WHERE Username = ?;";
+        String updateCommand = "UPDATE chats SET ChatMap = ? WHERE Username = ?;";
+        String insertCommand = "INSERT INTO chats (ChatMap, Username) VALUES (?, ?);";
+        String command;
+        
+        if (insert)
+            command = insertCommand;
+        else
+            command = updateCommand;
         
         Connection dbConnection = null;
         PreparedStatement statement = null;
@@ -659,7 +673,7 @@ public class DatabaseWorker
             statement = dbConnection.prepareStatement(command);   
             
             statement.setObject(1, chatmap);            
-            statement.setString(2, username);
+            statement.setString(2, username);                
             
             statement.executeUpdate();
             
@@ -691,7 +705,17 @@ public class DatabaseWorker
         
         String command = "SELECT ChatMap FROM chats WHERE Username=?;";
         
-        chatmap = (HashMap)convertBlobToObject(simpleBlobQuery(command, "ChatMap", username));
+        byte[] chatMapBytes = simpleBlobQuery(command, "ChatMap", username);
+        
+        if (chatMapBytes != null)
+        {
+            chatmap = (HashMap)convertBlobToObject(chatMapBytes);
+        }
+        else
+        {
+            chatmap = new HashMap<>();
+            insertChatMap(username, chatmap, true);
+        }
         
         return chatmap;
     }
@@ -801,4 +825,79 @@ public class DatabaseWorker
             }
         }
     }
+    
+    
+    
+    /*
+    // NOTIFICATIONS SECTION
+    */
+    
+    public ArrayList<Notification> getNotifications(String username)
+    {
+        String command = "SELECT Notifications FROM notifications WHERE username=?";
+        String columnName = "Notifications";
+        String onlyParameter = username;
+        
+        byte[] notificationsBytes = simpleBlobQuery(command, columnName, onlyParameter);
+        
+        if (notificationsBytes == null)
+            return null;
+        
+        Object notificationsObject = convertBlobToObject(notificationsBytes);
+        
+        return (ArrayList<Notification>)notificationsObject;
+    }
+
+    
+    public boolean insertNotifications(String username, ArrayList<Notification> notificationsList)
+    {
+        String command = "UPDATE notifications SET Notifications=? WHERE Username=?";
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        
+        try 
+        {
+            dbConnection = getDBconnection();
+            statement = dbConnection.prepareStatement(command);   
+            
+            statement.setObject(1, notificationsList);            
+            statement.setString(2, username);
+            
+            statement.executeUpdate();
+            
+            return true;
+        }
+        catch (SQLException e)
+        {
+            String error = "DBWorker: New notifications insert failed. Error: " + e.getMessage();
+            System.out.println(error);
+            communicator.sendAlert(error);
+            return false;
+        }
+        finally 
+        {
+            try {
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after inserting notifications for " + clientIp + "."); }
+        }        
+    }
+    
+    
+    public boolean clearNotifications(String username)
+    {
+        ArrayList<Notification> tempNotifications = this.getNotifications(username);
+        
+        // Empty the notifications list
+        tempNotifications.clear();
+        
+        this.insertNotifications(username, tempNotifications);
+        
+        return true;
+    }
 }
+
+

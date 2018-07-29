@@ -18,6 +18,7 @@ public class LoginForm extends Form {
     private boolean authenticated;
     private File userImageFile;
     
+    private ArrayList<Notification> notificationsList;
     private ArrayList<String> userList;
     private ArrayList<String> onlineList;
     
@@ -30,6 +31,7 @@ public class LoginForm extends Form {
         this.authenticated = false;
         userList = new ArrayList<>();
         onlineList = new ArrayList<>();
+        notificationsList = new ArrayList<>();
     }
     
     
@@ -68,6 +70,12 @@ public class LoginForm extends Form {
     public File getUserImageFile()
     {
         return userImageFile;
+    }
+    
+    
+    public ArrayList<Notification> getNotificationsList()
+    {
+        return notificationsList;
     }
     
     
@@ -119,6 +127,12 @@ public class LoginForm extends Form {
     public void setUserImageFile(File userImageFile)
     {
         this.userImageFile = userImageFile;
+    }
+    
+    
+    public void setNotificationsList(ArrayList<Notification> notificationsList)
+    {
+        this.notificationsList = notificationsList;
     }
     
     

@@ -21,7 +21,7 @@ public class Alert {
         ImageView icon = new ImageView(new Image(alert.getClass().getResourceAsStream("/tarkovtradericon.png")));
         
         Notifications notification = Notifications.create()
-                .title(title)
+                .title(null)
                 .text(text)
                 .graphic(icon)
                 .hideAfter(Duration.seconds(duration));

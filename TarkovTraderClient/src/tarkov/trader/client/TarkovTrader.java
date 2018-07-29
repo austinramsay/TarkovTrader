@@ -37,6 +37,7 @@ public class TarkovTrader extends Application {
     private AddItemStage addItemStage;
     private NewSearch newSearch;
     private Messenger messenger;
+    private NotificationManager notificationManager;
     private Thread workerThread;
     
     // JavaFX variable declarations
@@ -297,9 +298,21 @@ public class TarkovTrader extends Application {
     }
     
     
+    public NotificationManager getNotificationManager()
+    {
+        return this.notificationManager;
+    }
+    
+    
     public void setMessenger(Messenger messenger)
     {
         this.messenger = messenger;
+    }
+    
+    
+    public void startNotificationManager()
+    {
+        notificationManager = new NotificationManager(this);
     }
     
     
