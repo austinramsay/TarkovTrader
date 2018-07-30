@@ -108,8 +108,6 @@ public class NotificationManager {
                 // Create a message for the queue if the chat isn't open
                 notificationQueue.add(String.format(messageAlert, notification.getCount(), notification.getOriginUsername()));
             }
-            else
-                System.out.println("working");
         }
         else
             notificationQueue.add(String.format(messageAlert, notification.getCount(), notification.getOriginUsername()));

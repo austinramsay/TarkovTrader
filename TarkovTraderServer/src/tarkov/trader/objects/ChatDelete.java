@@ -9,12 +9,20 @@ package tarkov.trader.objects;
 public class ChatDelete extends Form {
     
     
-    public ChatDelete()
+    private String usernameToRemove;
+    
+    
+    public ChatDelete(String usernameToRemove)
     {
         this.type = "chatdelete";
+        this.usernameToRemove = usernameToRemove;
     }
     
     
+    public String getUsernameToRemove()
+    {
+        return usernameToRemove;
+    }
     
     
 }

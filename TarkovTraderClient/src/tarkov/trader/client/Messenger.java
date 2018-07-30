@@ -37,6 +37,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+import tarkov.trader.objects.ChatDelete;
 import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.Message;
 
@@ -80,6 +81,8 @@ public class Messenger {
     private MenuItem deleteChatMenu;
     
     public ListView<Chat> chatListView;
+    
+    private final String NO_CHAT = "No chat selected.";
     
     
     public Messenger(TarkovTrader trader, RequestWorker worker)
@@ -174,7 +177,7 @@ public class Messenger {
         
         // Text fields/areas
         chatDisplay = new TextArea();
-        chatDisplay.setText("No chat selected.");
+        chatDisplay.setText(NO_CHAT);
         chatDisplay.setEditable(false);
         chatDisplay.setWrapText(true);
         chatDisplay.getStyleClass().add("chatDisplay");
@@ -557,6 +560,22 @@ public class Messenger {
     
     private boolean deleteChat()
     {
+        if (chatListView.getSelectionModel().isEmpty())
+            return false;
+        
+        // Get the selected chat's origin username
+        String usernameToRemove = chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username);
+        
+        // Create a delete request with respective name
+        ChatDelete chatDeleteRequest = new ChatDelete(usernameToRemove);
+        
+        // Submit request to server
+        if (worker.sendForm(chatDeleteRequest))
+            chatDisplay.setText(NO_CHAT);
+        
+        // Server will force sync, list will automatically be updated
+        // Done
+        
         return true;
     }
     

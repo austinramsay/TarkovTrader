@@ -744,10 +744,22 @@ public class DatabaseWorker
             byte[] chatmapbytes = result.getBytes(1);
             
             HashMap<String, Chat> tempChatMap = (HashMap)convertBlobToObject(chatmapbytes);
-            
-            Chat tempChat = tempChatMap.get(chatusername);
-            tempChat.appendMessage(message);
-            
+                        
+            // Check for existence of chat for other user
+            // This will happen if the destination user is offline, and the online user is attempting to send a message to a client who has deleted this chat
+            Chat tempChat;
+            if (tempChatMap.containsKey(chatusername))
+            {
+                tempChat = tempChatMap.get(chatusername);
+                tempChat.appendMessage(message);
+            }
+            else
+            {
+                // The chat may not exist..create it now to be reinserted
+                tempChat = new Chat(pullusername, chatusername, null);
+                tempChat.appendMessage(message);
+            }
+                                    
             tempChatMap.put(chatusername, tempChat);
             
             statement = null;

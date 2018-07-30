@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import tarkov.trader.objects.Chat;
+import tarkov.trader.objects.ChatDelete;
 import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
@@ -160,7 +161,13 @@ public class RequestWorker implements Runnable {
                 
                 
             case "chatlist":
-                syncChats();
+                
+                if (authenticateRequest())
+                {
+                    syncChats();
+                }
+                else
+                    sendAuthenticationFailure();
                 
                 break;
                 
@@ -170,9 +177,22 @@ public class RequestWorker implements Runnable {
                 
                 if (authenticateRequest())
                 {
-                    processMessage(messageform);
+                    processMessage(messageform, true);                          // Process this message, AND cache it (true)
                 }
                 else
+                    sendAuthenticationFailure();
+                
+                break;
+                
+                
+            case "chatdelete":
+                ChatDelete chatdeleterequest = (ChatDelete)form;
+                
+                if (authenticateRequest())
+                {
+                    processChatDelete(chatdeleterequest.getUsernameToRemove());
+                }
+                else 
                     sendAuthenticationFailure();
                 
                 break;
@@ -408,27 +428,38 @@ public class RequestWorker implements Runnable {
         {
             chat.setOpened();
             
+            
             // The new chat is from this worker's user, we need to forward to the other user if they are online. We will also need to put the chat into the user's DB row regardless if offline/online
             String destination = chat.getDestination();  // Username new chat is being sent to
             HashMap<String, Chat> syncchatmap;           // We'll use this temp object to pull this users as well as the destination users chat map in the database
             
+            
+            
             // Insert chat into both users DB
             // First, update this user's chat map and sync
-            chatmap.put(destination, chat);                // Insert this new chat into the map
+            chatmap.put(destination, chat);                              // Insert this new chat into the map
             dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync
             syncChats();                                                 // Sync just for good measure
             syncchatmap = null;                                          // Close this map
                     
+            
+            
             // Now, update the receiving user's -- sync only if the user is online
             syncchatmap = dbWorker.pullChatMap(chat.getDestination());   // We pull the destination users chat map
             if (syncchatmap.containsKey(clientUsername))
             {
                 // This request worker's user must have deleted the chat while the destination still has it
-                // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+                // We'll translate this chat into a message for the destination client instead
+                Message convertedChat = convertChatToMessage(chat);
+                processMessage(convertedChat, false);                    // We want to process this as a normal message for the other client, and we DO NOT want to cache this message (it will cause a doubled message for this client)
+                System.out.println("Request: New chat processed for " + chat.getOrigin() + ".. converted to message for " + chat.getDestination() + ".");
+                return true;
             }
-            syncchatmap.put(chat.getOrigin(), chat);                     // Add this new chat
+            syncchatmap.put(chat.getOrigin(), chat);                            // Add this new chat
             dbWorker.insertChatMap(chat.getDestination(), syncchatmap, false);  // Reinsert to destination users DB. Can now sync if online or pull new info upon login if offline
             syncchatmap = null;
+            
+            
             
             // Check if the user is online
             if (isOnline(destination))                            // If the user is online, they will be in the authenticated users map
@@ -451,6 +482,7 @@ public class RequestWorker implements Runnable {
                 dbWorker.insertNotifications(destination, addNotification(destinationNotifications, "chat"));                
             }
             
+            
             System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
         }
         
@@ -458,39 +490,31 @@ public class RequestWorker implements Runnable {
     }
     
     
-    private void processChatDelete()
+    // This is necessary when a chat exists only on one end and a new Chat is attempted from the side that does not have it
+    // The chat is converted to a message for the client still containing the Chat
+    // At this point, the returned Message here is sent to processMessage 
+    private Message convertChatToMessage(Chat chat)
     {
-        // ChatMap = <Destination username, Chat object>
+        ArrayList<String> chatMessages;
         
+        if (chat.getMessages() != null)
+            chatMessages = chat.getMessages();
+        else
+            return null;
         
-    }
-    
-    
-    // Pulls the most recent chat map stored in the database, and iterates through all the chats to add into an arraylist. Then pushes the most recent list to the client
-    public void syncChats()
-    {
-        if (!messageCache.isEmpty())
-        {
-            syncCache();
-        }
+        // Really should only be one message in the chat since it is new
+        String message = chatMessages.get(0);
+        String origin = chat.getOrigin();
+        String destination = chat.getDestination();
         
-        this.chatmap = dbWorker.pullChatMap(clientUsername);  
-        ChatListForm chatlistform = new ChatListForm();
-        ArrayList<Chat> chatlist = new ArrayList<>();
+        Message convertedMessage = new Message(origin, destination, message);
         
-        for (Map.Entry<String, Chat> entry : chatmap.entrySet())
-        {
-            chatlist.add(entry.getValue());
-        }
-        
-        chatlistform.setChatList(chatlist);
-        
-        this.sendForm(chatlistform);
+        return convertedMessage;
     }
     
     
     // Inbound message for an established chat. Could be sent by this user or a this could be the destination user
-    public synchronized void processMessage(Message messageform)
+    public synchronized boolean processMessage(Message messageform, boolean shouldCache)
     {
         String origin = messageform.getOrigin();
         String destination = messageform.getDestination();
@@ -500,26 +524,46 @@ public class RequestWorker implements Runnable {
         if (destination.equals(clientUsername))   // Inbound message destination is this user, forward this message to this user's client - this means another users request worker found this client is online..and is using
         {
             // Ensure this client does have this chat -- if not, create it and force sync before sending message
+            System.out.println(chatmap.toString());
+            if (!chatmap.containsKey(origin))
+            {
+                // The user does NOT have this chat -- create it now and force sync
+                Chat newChat = new Chat(origin, destination, null);          // Create the non-existant chat
+                newChat.setOpened();                                         // This has been recognized by the server, set it opened
+                newChat.appendMessage(message);                              // Append this processed message to the chat
+                chatmap.put(origin, newChat);                                // Insert this new chat into the map
+                dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync
+                syncChats();
+                Notification newChatNotification = new Notification("chat", origin);
+                sendForm(newChatNotification);    
+                return true;
+            }
             
-            submitMessageToCache(origin, message);
+            // The client DOES have this chat (now, if not already), continue to process the message normally 
+            if (shouldCache)
+                submitMessageToCache(origin, message);
+            
+            // Forward to client
             sendForm(messageform);
+            
+            // Handle new message notification
+            Notification newMessageNotification = new Notification("message", clientUsername);
+            newMessageNotification.setCount(1);
+            sendForm(newMessageNotification);            
         }
         else   // The user has sent this message to someone else, forward to them
         {
-            submitMessageToCache(destination, message);
+            if (shouldCache)
+                submitMessageToCache(destination, message);   // Probably don't want to submit to cache if the chat was converted to a message in case of deletion
             
+            // If the client is online, push the message using their worker, if not - let's just push to DB and leave a notification for their next login
             if (isOnline(destination))
             {
                 // No need to push to other users DB, their message cache will handle this itself
                 RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
                 
                 // Send the message to destination client
-                destinationWorker.processMessage(messageform);
-                
-                // Create notification for destination client
-                Notification newMessageNotification = new Notification("message", clientUsername);
-                newMessageNotification.setCount(1);
-                destinationWorker.sendForm(newMessageNotification);
+                destinationWorker.processMessage(messageform, true);
                 
                 // Close destination worker
                 destinationWorker = null;
@@ -534,6 +578,55 @@ public class RequestWorker implements Runnable {
                 ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(destination);
                 dbWorker.insertNotifications(destination, addNotification(destinationNotifications, "message"));
             }
+        }
+        
+        return true;
+    }
+    
+    
+    private void processChatDelete(String username)
+    {
+        // ChatMap = <Destination username, Chat object>
+        if (chatmap.containsKey(username))
+        {
+            chatmap.remove(username);                                    // Remove requested user's chat from the current map
+            dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync    
+            
+            // Cache may contain messages related to this chat, let's delete those messages before syncing
+            // messageCache = <Username, ArrayList of String messages for respective user>
+            if (messageCache.containsKey(username))
+                messageCache.remove(username);
+            
+            // Proceed to sync chats, will force list with removed chat to the client
+            syncChats();
+            
+            // Verbose logging
+            communicator.sendAlert("Chat with " + username + " successfully deleted.");
+            System.out.println("Request: Chat '" + username + "' successfully deleted for '" + clientUsername + "'.");
+        }
+        else
+        {
+            // For extra protection, should never really occur 
+            communicator.sendAlert("Chat could not be deleted.");
+            System.out.println("Request: Chat '" + username + "' failed to delete for '" + clientUsername + "'.");
+        }
+    }
+    
+    
+    private void sendChatNofication(String sendNotificationTo, String fromUsername)
+    {
+        if (isOnline(sendNotificationTo))
+        {
+            // User is online, we'll send a notification right now
+            RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(sendNotificationTo);
+            Notification newChatNotification = new Notification("chat", fromUsername);
+            destinationWorker.sendForm(newChatNotification);            
+        }
+        else
+        {
+            // User is offline, push to DB
+            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
+            dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "chat"));                 
         }
     }
     
@@ -556,6 +649,33 @@ public class RequestWorker implements Runnable {
             tempMessageCache = null;
         }
    
+    }
+
+
+    // Pulls the most recent chat map stored in the database, and iterates through all the chats to add into an arraylist. Then pushes the list to the client. The client Messenger is automatically populated
+    public void syncChats()
+    {
+        // Before we sync, clear the message cache so these messages will be included in their respective chat
+        if (!messageCache.isEmpty())
+        {
+            syncCache();
+        }
+        
+        // Pull the latest map (this could've just been updated when syncing cache)
+        this.chatmap = dbWorker.pullChatMap(clientUsername);  
+        
+        // Build the form to prepare to send to client for processing
+        ChatListForm chatlistform = new ChatListForm();   // This will be sent to the client
+        ArrayList<Chat> chatlist = new ArrayList<>();     // this will be added to by iterating through our recently pulled ChatMap, and then set into the new ChatListForm to be sent
+        
+        for (Map.Entry<String, Chat> entry : chatmap.entrySet())   // Iterate current chat map
+        {
+            chatlist.add(entry.getValue());   // Each entry will have a corresponding Chat to be packed for the client
+        }
+        
+        chatlistform.setChatList(chatlist);   // Set the ArrayList<Chat> in the new Form we just created 
+        
+        this.sendForm(chatlistform);          // Finally, send completed form to client
     }
     
     
