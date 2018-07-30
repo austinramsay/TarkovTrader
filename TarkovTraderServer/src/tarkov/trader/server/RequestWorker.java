@@ -426,62 +426,59 @@ public class RequestWorker implements Runnable {
     {
         if (chat.isNew)
         {
+            // Acknowledge the chat server-side
             chat.setOpened();
             
             
             // The new chat is from this worker's user, we need to forward to the other user if they are online. We will also need to put the chat into the user's DB row regardless if offline/online
             String destination = chat.getDestination();  // Username new chat is being sent to
-            HashMap<String, Chat> syncchatmap;           // We'll use this temp object to pull this users as well as the destination users chat map in the database
-            
-            
+            String origin = chat.getOrigin();
             
             // Insert chat into both users DB
+            
             // First, update this user's chat map and sync
             chatmap.put(destination, chat);                              // Insert this new chat into the map
             dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync
-            syncChats();                                                 // Sync just for good measure
-            syncchatmap = null;                                          // Close this map
+            syncChats();                                                 // Sync just for good measure               
                     
-            
+            // ------------------------------------------------------------------------------------------------------------
             
             // Now, update the receiving user's -- sync only if the user is online
+            HashMap<String, Chat> syncchatmap = null;                    // We'll use this temp object to pull the destination users chat map from the database
             syncchatmap = dbWorker.pullChatMap(chat.getDestination());   // We pull the destination users chat map
+            
+            
+            // The destination client may already have this chat, check and process accordingly
             if (syncchatmap.containsKey(clientUsername))
             {
                 // This request worker's user must have deleted the chat while the destination still has it
                 // We'll translate this chat into a message for the destination client instead
-                Message convertedChat = convertChatToMessage(chat);
-                processMessage(convertedChat, false);                    // We want to process this as a normal message for the other client, and we DO NOT want to cache this message (it will cause a doubled message for this client)
-                System.out.println("Request: New chat processed for " + chat.getOrigin() + ".. converted to message for " + chat.getDestination() + ".");
+                convertChatToMessage(chat);
                 return true;
+                // End here, chat was processed as message for destination client
             }
-            syncchatmap.put(chat.getOrigin(), chat);                            // Add this new chat
-            dbWorker.insertChatMap(chat.getDestination(), syncchatmap, false);  // Reinsert to destination users DB. Can now sync if online or pull new info upon login if offline
+            
+            
+            // Continue normally if the destination client does not have this chat yet
+            syncchatmap.put(origin, chat);                            // Add this new chat
+            dbWorker.insertChatMap(destination, syncchatmap, false);  // Reinsert to destination users DB. Can now sync if online or pull new info upon login if offline
             syncchatmap = null;
             
             
             
             // Check if the user is online
-            if (isOnline(destination))                            // If the user is online, they will be in the authenticated users map
+            if (isOnline(destination))                                                                     // If the user is online, they will be in the authenticated users map
             {
                 // User is online, get the client's worker to forward them the new chat
                 RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);  // Get the destination users RequestWorker
-                destinationWorker.syncChats();                                                             // Make the destination users worker resync and push update to client
-                
-                // Send notification to destination user that a new chat is received
-                Notification newChatNotification = new Notification("chat", clientUsername);
-                destinationWorker.sendForm(newChatNotification);
+                destinationWorker.syncChats();                                                             // Force the destination users worker resync and force update to client
                 
                 communicator.sendAlert(chat.getDestination() + " is online. Notification sent.");          // Let THIS user know that the destination client is online and has received successfully
                 destinationWorker = null;                                                                  // Close the destinationWorker
             }
-            else
-            {
-                // User is offline, push to notifications
-                ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(destination);
-                dbWorker.insertNotifications(destination, addNotification(destinationNotifications, "chat"));                
-            }
             
+            // Send notifications to destination's DB or through their worker depending if they are online/offline. This method will handle client state automatically
+            sendChatNotification(destination, clientUsername);
             
             System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
         }
@@ -493,23 +490,31 @@ public class RequestWorker implements Runnable {
     // This is necessary when a chat exists only on one end and a new Chat is attempted from the side that does not have it
     // The chat is converted to a message for the client still containing the Chat
     // At this point, the returned Message here is sent to processMessage 
-    private Message convertChatToMessage(Chat chat)
+    private boolean convertChatToMessage(Chat chat)
     {
+        String origin = chat.getOrigin();
+        String destination = chat.getDestination();
         ArrayList<String> chatMessages;
         
         if (chat.getMessages() != null)
             chatMessages = chat.getMessages();
         else
-            return null;
+        {
+            System.out.println("Request: Failed to convert chat to message from " + origin + " to " + destination + ".");
+            return false;
+        }
+        
         
         // Really should only be one message in the chat since it is new
         String message = chatMessages.get(0);
-        String origin = chat.getOrigin();
-        String destination = chat.getDestination();
         
         Message convertedMessage = new Message(origin, destination, message);
         
-        return convertedMessage;
+        processMessage(convertedMessage, false);    // We want to process this as a normal message for the other client, and we DO NOT want to cache this message (it will cause a doubled message for this client)
+        
+        System.out.println("Request: New chat processed for " + chat.getOrigin() + ".. converted to message for " + chat.getDestination() + ".");
+        
+        return true;
     }
     
     
@@ -521,45 +526,37 @@ public class RequestWorker implements Runnable {
         String message = messageform.getMessage();
         
         
-        if (destination.equals(clientUsername))   // Inbound message destination is this user, forward this message to this user's client - this means another users request worker found this client is online..and is using
+        if (destination.equals(clientUsername))              // Inbound message destination is this user, forward this message to this user's client - this means another users request worker found this client is online..and is using
         {
-            // Ensure this client does have this chat -- if not, create it and force sync before sending message
-            System.out.println(chatmap.toString());
+                                                             // Ensure this client does have this chat -- if not, create it and force sync before sending message
             if (!chatmap.containsKey(origin))
             {
-                // The user does NOT have this chat -- create it now and force sync
-                Chat newChat = new Chat(origin, destination, null);          // Create the non-existant chat
-                newChat.setOpened();                                         // This has been recognized by the server, set it opened
-                newChat.appendMessage(message);                              // Append this processed message to the chat
-                chatmap.put(origin, newChat);                                // Insert this new chat into the map
-                dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync
-                syncChats();
-                Notification newChatNotification = new Notification("chat", origin);
-                sendForm(newChatNotification);    
+                // The user does NOT have this chat -- convert this message to a chat
+                convertMessageToChat(messageform);
                 return true;
+                // End here, the message was translated to a new chat for this client
             }
             
-            // The client DOES have this chat (now, if not already), continue to process the message normally 
+                                                             // The client DOES have this chat (now, if not already), continue to process the message normally 
             if (shouldCache)
                 submitMessageToCache(origin, message);
             
-            // Forward to client
+                                                             // Forward to client
             sendForm(messageform);
             
-            // Handle new message notification
-            Notification newMessageNotification = new Notification("message", clientUsername);
-            newMessageNotification.setCount(1);
-            sendForm(newMessageNotification);            
+                                                             // Handle new message notification
+            sendMessageNotification(clientUsername, origin);       
         }
-        else   // The user has sent this message to someone else, forward to them
+        else                                                 // The user has sent this message to someone else, forward to them
         {
             if (shouldCache)
-                submitMessageToCache(destination, message);   // Probably don't want to submit to cache if the chat was converted to a message in case of deletion
+                submitMessageToCache(destination, message);  // Don't want to submit to cache if the chat was converted to a message in case of deletion
             
-            // If the client is online, push the message using their worker, if not - let's just push to DB and leave a notification for their next login
+            
+                                                             // If the client is online, push the message using their worker, if not - let's just push to DB and leave a notification for their next login
             if (isOnline(destination))
             {
-                // No need to push to other users DB, their message cache will handle this itself
+                                                             // No need to push to other users DB, their message cache will handle this itself
                 RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
                 
                 // Send the message to destination client
@@ -571,16 +568,31 @@ public class RequestWorker implements Runnable {
             else
             {
                 // Just push to the other users DB and set notification
-                dbWorker.insertNewMessage(destination, clientUsername, message);
-                
-                // Check current destination notifications for already existing notification and add to count, or create one if not there
-                // Update destination users notifications DB
-                ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(destination);
-                dbWorker.insertNotifications(destination, addNotification(destinationNotifications, "message"));
+                if (dbWorker.insertNewMessage(destination, clientUsername, message))     // If method returns true, the message was inserted into an existing chat send a 'Message' notification
+                    sendMessageNotification(destination, clientUsername);
+                else                                                                     // If method returns false, a new chat had to be created before insertion, create a 'Chat' notification
+                    sendChatNotification(destination, clientUsername);
             }
         }
         
         return true;
+    }
+    
+    
+    private void convertMessageToChat(Message messageToConvert)
+    {
+        String origin = messageToConvert.getOrigin();
+        String destination = messageToConvert.getDestination();
+        String message = messageToConvert.getMessage();
+        
+        // Build the new chat using given message information
+        Chat newChat = new Chat(origin, destination, null);          // Create the non-existant chat
+        newChat.setOpened();                                         // This has been recognized by the server, set it opened
+        newChat.appendMessage(message);                              // Append this processed message to the chat
+        chatmap.put(origin, newChat);                                // Insert this new chat into the map
+        dbWorker.insertChatMap(clientUsername, chatmap, false);      // Resinert to this users DB. Now we can sync
+        syncChats();                                                 // Update client with newly inserted chat
+        sendChatNotification(clientUsername, origin);                // Send notification to this client for the new chat            
     }
     
     
@@ -609,24 +621,6 @@ public class RequestWorker implements Runnable {
             // For extra protection, should never really occur 
             communicator.sendAlert("Chat could not be deleted.");
             System.out.println("Request: Chat '" + username + "' failed to delete for '" + clientUsername + "'.");
-        }
-    }
-    
-    
-    private void sendChatNofication(String sendNotificationTo, String fromUsername)
-    {
-        if (isOnline(sendNotificationTo))
-        {
-            // User is online, we'll send a notification right now
-            RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(sendNotificationTo);
-            Notification newChatNotification = new Notification("chat", fromUsername);
-            destinationWorker.sendForm(newChatNotification);            
-        }
-        else
-        {
-            // User is offline, push to DB
-            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
-            dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "chat"));                 
         }
     }
     
@@ -734,13 +728,62 @@ public class RequestWorker implements Runnable {
     // NOTIFICATION SECTION
     */
     
-    private ArrayList<Notification> addNotification(ArrayList<Notification> notificationsList, String notificationType)
+    private void sendChatNotification(String sendNotificationTo, String displayOnNotify)
     {
+        if (sendNotificationTo.equals(clientUsername))
+        {
+            // Send our client this notification
+            Notification newChatNotification = new Notification("chat", displayOnNotify);
+            sendForm(newChatNotification);               
+        }
+        else if (isOnline(sendNotificationTo))
+        {
+            // User is online, we'll send a notification right now
+            RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(sendNotificationTo);
+            Notification newChatNotification = new Notification("chat", displayOnNotify);
+            destinationWorker.sendForm(newChatNotification);            
+        }
+        else
+        {
+            // User is offline, push to DB
+            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);                                // Get the current destination user's notifications list
+            
+            ArrayList<Notification> destinationUpdatedNotifications = addNotification(destinationNotifications, "chat", displayOnNotify);    // Append our new chat notification 
+            
+            dbWorker.insertNotifications(sendNotificationTo, destinationUpdatedNotifications);                                               // Update the list for the user's DB
+        }
+    }
+    
+    
+    private void sendMessageNotification(String sendNotificationTo, String displayOnNotify)
+    {  
+        if (sendNotificationTo.equals(clientUsername))
+        {
+            // Send our client this notification
+            Notification newMessageNotification = new Notification("message", displayOnNotify);
+            newMessageNotification.setCount(1);
+            sendForm(newMessageNotification);                  
+        }
+        else 
+        {
+            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
+            dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "message", displayOnNotify));               
+        }
+    }
+
+    
+    private ArrayList<Notification> addNotification(ArrayList<Notification> notificationsList, String notificationType, String displayOnNotify)
+    {
+        // We are using this method when creating a new notification to add to another user's list
+        // This method finds related notifications and modifies it
+        // Or creates one if needed
+        // Usually used when inserting back into another users DB 
+        
         Notification tempNotification = null;
         
         for (Notification notification : notificationsList)
         {
-            if (notification.getOriginUsername().equals(clientUsername) && notification.getNotificationType().equals(notificationType))
+            if (notification.getOriginUsername().equals(displayOnNotify) && notification.getNotificationType().equals(notificationType))
             {
                 tempNotification = notification;
                 notificationsList.remove(notification);
@@ -751,7 +794,7 @@ public class RequestWorker implements Runnable {
         if (tempNotification == null)
         {
             // No existing notification found, create a new one
-            tempNotification = new Notification(notificationType, clientUsername);
+            tempNotification = new Notification(notificationType, displayOnNotify);
         }
         
         if (notificationType.equals("message"))

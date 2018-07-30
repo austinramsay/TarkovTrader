@@ -194,7 +194,6 @@ public class RequestWorker implements Runnable
                 
                 else
                 {
-                    Platform.runLater(() -> Alert.display(null, "New chat received."));
                     TarkovTrader.syncInProgress.compareAndSet(true, false);
                 }                
                 

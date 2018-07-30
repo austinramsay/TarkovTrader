@@ -726,6 +726,7 @@ public class DatabaseWorker
     {
         String pullcommand = "SELECT ChatMap FROM chats WHERE Username=?;";
         String updatecommand = "UPDATE chats SET ChatMap = ? WHERE Username = ?;";
+        boolean createdNewChat = false;
         
         Connection dbConnection = null;
         PreparedStatement statement = null;
@@ -758,6 +759,7 @@ public class DatabaseWorker
                 // The chat may not exist..create it now to be reinserted
                 tempChat = new Chat(pullusername, chatusername, null);
                 tempChat.appendMessage(message);
+                createdNewChat = true;
             }
                                     
             tempChatMap.put(chatusername, tempChat);
@@ -770,7 +772,10 @@ public class DatabaseWorker
             
             statement.executeUpdate();
             
-            return true;
+            if (createdNewChat)
+                return false;
+            else
+                return true;
         }
         catch (SQLException e)
         {

@@ -56,6 +56,9 @@ public class NotificationManager {
             TarkovTrader.notificationsList.add(notification);
         }
         
+        TarkovTrader.notificationsList.removeAll(toRemove);
+        TarkovTrader.notificationsList.addAll(toReplace);
+        
         if (toFlagMessages)
         {
             flagMessages(true);
