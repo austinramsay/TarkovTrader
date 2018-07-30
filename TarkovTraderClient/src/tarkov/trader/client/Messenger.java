@@ -3,11 +3,7 @@ package tarkov.trader.client;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
 import java.util.function.Predicate;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -17,6 +13,7 @@ import javafx.concurrent.Task;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.Scene;
 import tarkov.trader.objects.Chat;
 import javafx.stage.Stage;
@@ -24,13 +21,16 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -47,6 +47,7 @@ import tarkov.trader.objects.Message;
 
 public class Messenger {
         
+    private TarkovTrader trader;
     private RequestWorker worker;
     public volatile static boolean isOpen;
     
@@ -75,11 +76,15 @@ public class Messenger {
     private Button newChatButton;
     private Button cancel;
     
+    private ContextMenu chatControlMenu;
+    private MenuItem deleteChatMenu;
+    
     public ListView<Chat> chatListView;
     
     
-    public Messenger(RequestWorker worker)
+    public Messenger(TarkovTrader trader, RequestWorker worker)
     {
+        this.trader = trader;
         this.worker = worker;
         loadResources();
     }
@@ -124,6 +129,13 @@ public class Messenger {
         chatsLabel.getStyleClass().add("subWindowLabel");
         
         
+        // Context menu for Chat Actions on right click
+        chatControlMenu = new ContextMenu();
+        deleteChatMenu = new MenuItem("Delete");
+        deleteChatMenu.setOnAction(e -> deleteChat());
+        chatControlMenu.getItems().add(deleteChatMenu);
+        
+        
         // List view 
         chatListView = new ListView<>();
         chatListView.setCellFactory(param -> new ListCell<Chat>() {
@@ -145,7 +157,15 @@ public class Messenger {
                     this.setPrefHeight(45);
                     this.setTooltip(new Tooltip("Right Click for Options"));
                     this.setOnMouseClicked(e -> { 
-                        unpackChatMessages(chat.getMessages());
+                        if (e.getButton() == MouseButton.PRIMARY)
+                        {
+                            chatControlMenu.hide();
+                            unpackChatMessages(chat.getMessages());
+                        }
+                        else if (e.getButton() == MouseButton.SECONDARY)
+                        {
+                            chatControlMenu.show(this, e.getScreenX(), e.getScreenY());
+                        }
                     });
                 }
             }
@@ -237,6 +257,9 @@ public class Messenger {
         messenger.setOnCloseRequest(e -> close());
         messenger.show();     
         Messenger.isOpen = true;
+        
+        // Handle notifications
+        trader.getNotificationManager().clearMessageNotifications();
         
         // After stage is displayed, resize text fields/areas
         resizeFields();
@@ -466,7 +489,7 @@ public class Messenger {
         newChatScene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         
         prompt.setScene(newChatScene);
-        prompt.setTitle("New Chat");
+        prompt.setTitle("User Search");
         prompt.setResizable(false);
         
         return prompt;
@@ -532,6 +555,12 @@ public class Messenger {
     }
     
     
+    private boolean deleteChat()
+    {
+        return true;
+    }
+    
+    
     private boolean send()
     {
         Chat currentChat = chatListView.getSelectionModel().getSelectedItem();
@@ -567,7 +596,6 @@ public class Messenger {
             Message messageform = new Message(TarkovTrader.username, currentChat.getName(TarkovTrader.username), message);
             if (worker.sendForm(messageform))
             {  
-                System.out.println("sent message");
                 append(message);
                 chatListView.getSelectionModel().getSelectedItem().appendMessage(message);
             }
@@ -614,7 +642,7 @@ public class Messenger {
         String sender = messageform.getOrigin();
         String message = messageform.getMessage();
         
-        if (chatListView.getItems() != null)
+        if (chatListView.getItems() != null && !chatListView.getSelectionModel().isEmpty())
         {
             if (chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username).equals(sender))
             {

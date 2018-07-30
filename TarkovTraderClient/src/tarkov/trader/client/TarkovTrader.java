@@ -20,6 +20,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import tarkov.trader.objects.Notification;
 
 /**
  *
@@ -71,6 +72,7 @@ public class TarkovTrader extends Application {
     public static volatile ArrayList<String> currentChats;
     public static volatile ArrayList<String> userList;
     public static volatile ArrayList<String> onlineList;
+    public static volatile ArrayList<Notification> notificationsList;
     // End logical variable declarations
     
     
@@ -85,6 +87,9 @@ public class TarkovTrader extends Application {
         
         currentChats = new ArrayList<>();
         userList = new ArrayList<>();
+        
+        // Initialize Notification Manager
+        startNotificationManager();
         
         // All resources are loaded into static fields one time and shared across the application
         Resources.load();
@@ -214,6 +219,11 @@ public class TarkovTrader extends Application {
         primaryStage.setTitle("Tarkov Trader");
         primaryStage.getIcons().add(Resources.icon);
         primaryStage.show();
+        
+        if (!TarkovTrader.notificationsList.isEmpty())
+        {
+            notificationManager.processNotificationsList();
+        }
     }
     
     
@@ -250,7 +260,7 @@ public class TarkovTrader extends Application {
     
     public void displayMessenger()
     {
-        this.messenger = new Messenger(worker);
+        this.messenger = new Messenger(this, worker);
         this.messenger.display();
     }
     
@@ -313,6 +323,21 @@ public class TarkovTrader extends Application {
     public void startNotificationManager()
     {
         notificationManager = new NotificationManager(this);
+    }
+    
+    
+    public void setNewMessagesButton(boolean toFlag)
+    {
+        if (toFlag)
+        {
+            if (!messageButton.getStyleClass().contains("newMessageButton") && !Messenger.isOpen)
+                messageButton.getStyleClass().add("newMessageButton");
+        }
+        else
+        {
+            if (messageButton.getStyleClass().contains("newMessageButton"));
+                messageButton.getStyleClass().remove("newMessageButton");
+        }
     }
     
     

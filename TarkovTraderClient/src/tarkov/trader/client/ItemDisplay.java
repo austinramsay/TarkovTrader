@@ -164,7 +164,7 @@ public class ItemDisplay {
             }
             else
             {
-                messenger = new Messenger(worker);
+                messenger = new Messenger(trader, worker);
                 messenger.display();
                 trader.setMessenger(messenger);      
             }

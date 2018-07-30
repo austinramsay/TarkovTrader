@@ -14,6 +14,7 @@ import tarkov.trader.objects.HeartbeatForm;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.Message;
+import tarkov.trader.objects.Notification;
 import tarkov.trader.objects.ProcessedItem;
 import tarkov.trader.objects.SyncForm;
 
@@ -147,10 +148,8 @@ public class RequestWorker implements Runnable
                 TarkovTrader.userImageFile = unpackedLogin.getUserImageFile();
                 TarkovTrader.userList = unpackedLogin.getUserList();
                 TarkovTrader.onlineList = unpackedLogin.getOnlineList();
+                TarkovTrader.notificationsList = unpackedLogin.getNotificationsList();
                 LoginPrompt.acknowledged = true;
-              
-                trader.startNotificationManager();
-                trader.getNotificationManager().processNotificationsList(unpackedLogin.getNotificationsList());
                 
                 break;
                 
@@ -216,6 +215,16 @@ public class RequestWorker implements Runnable
                 break;
                 
                 
+            case "notification":
+                Notification notification = (Notification)processedRequest;
+                
+                TarkovTrader.notificationsList.add(notification);
+                
+                trader.getNotificationManager().processNotificationsList();
+                
+                break;
+                
+                
             case "heartbeat":
                 // Send back a heartbeat
                 HeartbeatForm heartbeat = (HeartbeatForm)processedRequest;
@@ -253,10 +262,6 @@ public class RequestWorker implements Runnable
         if (Messenger.isOpen)
         {
             trader.getMessenger().processMessage(messageform);
-        }
-        else
-        {
-            Platform.runLater(() -> Alert.display(null, "New message from: " + messageform.getOrigin()));
         }
     }
     

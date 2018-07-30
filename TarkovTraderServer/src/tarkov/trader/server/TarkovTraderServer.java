@@ -50,7 +50,7 @@ public class TarkovTraderServer {
         do 
         {
             // Connect to MySQL database
-            System.out.print("MySQL Database IP address: ");
+            System.out.print("Tarkov Trader Database IP: ");
             definedDbIpAddr = scan.next();       
         
             System.out.print("Database name: ");
@@ -203,8 +203,10 @@ public class TarkovTraderServer {
         
         while (true)
         {
+            System.out.print("Command: ");
             command = scan.nextLine();
-            processCommand(command);
+            if (command.length() > 0)
+                processCommand(command);
         }
     }
     
@@ -231,6 +233,9 @@ public class TarkovTraderServer {
             case "heartbeat":
                 checkClientConnectivity();
                 break;
+                
+            default:
+                System.out.println("Command not found.");
                 
         }
         

@@ -12,7 +12,6 @@
 
 .label {
     -fx-text-fill: #fefefe;
-    -fx-font-family: "Arial";
     -fx-font-weight: bold;
 }
 
@@ -130,6 +129,13 @@
     -fx-font-size: 17;
     -fx-text-fill: #deb887;
     -fx-font-weight: 800;
+    -fx-underline: true;
+}
+
+.newMessageButton {
+    -fx-font-size: 15;
+    -fx-text-fill: #deb887;
+    -fx-font-weight: 900;
     -fx-underline: true;
 }
 

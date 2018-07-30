@@ -436,7 +436,11 @@ public class RequestWorker implements Runnable {
                 // User is online, get the client's worker to forward them the new chat
                 RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);  // Get the destination users RequestWorker
                 destinationWorker.syncChats();                                                             // Make the destination users worker resync and push update to client
-                destinationWorker.communicator.sendAlert("New message from: " + chat.getOrigin());         // Send notification to destination user that a new chat is received
+                
+                // Send notification to destination user that a new chat is received
+                Notification newChatNotification = new Notification("chat", clientUsername);
+                destinationWorker.sendForm(newChatNotification);
+                
                 communicator.sendAlert(chat.getDestination() + " is online. Notification sent.");          // Let THIS user know that the destination client is online and has received successfully
                 destinationWorker = null;                                                                  // Close the destinationWorker
             }
@@ -451,6 +455,14 @@ public class RequestWorker implements Runnable {
         }
         
         return true;
+    }
+    
+    
+    private void processChatDelete()
+    {
+        // ChatMap = <Destination username, Chat object>
+        
+        
     }
     
     
@@ -485,20 +497,31 @@ public class RequestWorker implements Runnable {
         String message = messageform.getMessage();
         
         
-        if (destination.equals(clientUsername))   // If the inbound message destination is this user, forward this message to this user's client - this means another users request worker found this client is online..and is using
+        if (destination.equals(clientUsername))   // Inbound message destination is this user, forward this message to this user's client - this means another users request worker found this client is online..and is using
         {
+            // Ensure this client does have this chat -- if not, create it and force sync before sending message
+            
             submitMessageToCache(origin, message);
             sendForm(messageform);
         }
         else   // The user has sent this message to someone else, forward to them
         {
             submitMessageToCache(destination, message);
-            ;
+            
             if (isOnline(destination))
             {
                 // No need to push to other users DB, their message cache will handle this itself
                 RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(destination);
+                
+                // Send the message to destination client
                 destinationWorker.processMessage(messageform);
+                
+                // Create notification for destination client
+                Notification newMessageNotification = new Notification("message", clientUsername);
+                newMessageNotification.setCount(1);
+                destinationWorker.sendForm(newMessageNotification);
+                
+                // Close destination worker
                 destinationWorker = null;
             }
             else
@@ -525,7 +548,7 @@ public class RequestWorker implements Runnable {
         else
         {
             // The user hasn't dealt with this username in the message cache for this session.
-            // Create a temp arraylist to put into the message cache which can then be added to for future messages later
+            // Create a temp arraylist to put into the message cache which can then be added to for future messages
             
             ArrayList<String> tempMessageCache = new ArrayList<>();
             tempMessageCache.add(message);
@@ -584,31 +607,8 @@ public class RequestWorker implements Runnable {
         
         return true;
     }
-    
-    
-    private boolean isOnline(String username)
-    {
-        if (TarkovTraderServer.authenticatedUsers.containsKey(username))
-            return true;
-        else
-            return false;
-    }
-    
-
-    private void disconnect()
-    {
-        System.out.println("Client " + clientIp + " has disconnected.");
-            
-        if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
-        {
-            syncCache();
-            TarkovTraderServer.authenticatedUsers.remove(clientUsername);
-            TarkovTraderServer.syncOnlineList();  // User disconnected, push latest online user list to all available clients
-        }
-        // TODO: HANDLE A CLOSED CONNECTION    
-    }
-    
-    
+   
+ 
     
     /* 
     // NOTIFICATION SECTION
@@ -645,4 +645,34 @@ public class RequestWorker implements Runnable {
         
         return notificationsList;
     }
+    
+    
+    
+    /*
+    // Client connection state handling
+    */
+    
+    private boolean isOnline(String username)
+    {
+        if (TarkovTraderServer.authenticatedUsers.containsKey(username))
+            return true;
+        else
+            return false;
+    }
+    
+
+    private void disconnect()
+    {
+        System.out.println("Client " + clientIp + " has disconnected.");
+            
+        if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
+        {
+            syncCache();
+            TarkovTraderServer.authenticatedUsers.remove(clientUsername);
+            TarkovTraderServer.syncOnlineList();  // User disconnected, push latest online user list to all available clients
+        }
+        // TODO: HANDLE A CLOSED CONNECTION    
+    }    
 }
+
+
