@@ -123,7 +123,10 @@ public class TarkovTrader extends Application {
         menubar.getMenus().addAll(ttMenu);
         
         aboutMenuItem = new MenuItem("About");
+        aboutMenuItem.setOnAction(e -> new AboutStage());
+        
         logoutMenuItem = new MenuItem("Logout");
+        logoutMenuItem.setOnAction(e -> close());
         
         ttMenu.getItems().addAll(aboutMenuItem, logoutMenuItem);
         

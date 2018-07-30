@@ -220,6 +220,10 @@
     -fx-background-color: black;
 }
 
+.list-cell:selected:hover {
+    -fx-text-fill: #424242;
+}
+
 .list-cell:empty:hover {
     -fx-background-color: #383838;
 }
