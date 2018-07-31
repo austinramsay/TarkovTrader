@@ -13,7 +13,6 @@ import javafx.concurrent.Task;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.Scene;
 import tarkov.trader.objects.Chat;
 import javafx.stage.Stage;
@@ -91,7 +90,7 @@ public class Messenger {
         this.worker = worker;
         loadResources();
     }
-
+    
     
     private void loadResources()
     {
@@ -562,6 +561,14 @@ public class Messenger {
     {
         if (chatListView.getSelectionModel().isEmpty())
             return false;
+        
+        if (chatListView.getSelectionModel().getSelectedItem().isNew)
+        {
+            chatListView.getItems().remove(chatListView.getSelectionModel().getSelectedItem());
+            chatListView.getSelectionModel().clearSelection();
+            chatDisplay.setText(NO_CHAT);
+            return true;
+        }
         
         // Get the selected chat's origin username
         String usernameToRemove = chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username);

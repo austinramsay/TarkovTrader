@@ -288,7 +288,7 @@ public class NewSearch {
         searchFlags.put("username", definedUsernameFlag);
         searchFlags.put("timezone", definedTimezoneFlag);
         searchFlags.put("keywords", definedKeywordsFlag);
-        System.out.println(searchFlags.toString());
+
         return searchFlags;
     }
     

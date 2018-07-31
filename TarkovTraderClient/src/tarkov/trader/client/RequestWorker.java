@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import javafx.application.Platform;
+import tarkov.trader.objects.Chat;
 import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
@@ -64,7 +65,7 @@ public class RequestWorker implements Runnable
     
     
     public void sendInitialConnectionRequest()
-    { 
+    {
         try 
         {
             connection = new Socket("70.93.96.32", 6550);
@@ -146,6 +147,7 @@ public class RequestWorker implements Runnable
                 TarkovTrader.ign = unpackedLogin.getIgn();
                 TarkovTrader.timezone = unpackedLogin.getTimezone();
                 TarkovTrader.userImageFile = unpackedLogin.getUserImageFile();
+                
                 TarkovTrader.userList = unpackedLogin.getUserList();
                 TarkovTrader.onlineList = unpackedLogin.getOnlineList();
                 TarkovTrader.notificationsList = unpackedLogin.getNotificationsList();
@@ -171,29 +173,51 @@ public class RequestWorker implements Runnable
                 if (Messenger.isOpen)
                 {   
                     FutureTask<Void> updateChatList = new FutureTask(() -> {
+                        // Get the open Messenger
                         Messenger tempMessenger = trader.getMessenger();
-                        int currentIndex = tempMessenger.chatListView.getSelectionModel().getSelectedIndex();
+                        
+                        // If there is a chat selected, get the selected name of the chat to reselect after repopulating
+                        String currentChatName = null;
+                        if (tempMessenger.chatListView.getSelectionModel().getSelectedItem() != null)
+                            currentChatName = tempMessenger.chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username);
+                        
+                        // Set the chat list for the messenger
                         tempMessenger.populate(chatlistform.getChatList());
-                        tempMessenger.chatListView.getSelectionModel().select(currentIndex);
+                        
+                        // If we got a name to select, find in the list and select again
+                        if (currentChatName != null)
+                        {
+                            for (Chat openChat : tempMessenger.chatListView.getItems())
+                            {
+                                if (openChat.getName(TarkovTrader.username).equals(currentChatName))
+                                {
+                                    tempMessenger.chatListView.getSelectionModel().select(openChat);
+                                    break;
+                                }
+                            }
+                        }
                     }, null);
                     
+                    // Run the task on the JavaFX application thread
                     Platform.runLater(updateChatList);  // RequestWorker needs access to the JavaFX application thread
                     
+                    // Wait for task to complete, handle possible exceptions, and set syncInProgess to false
                     try { 
-                        updateChatList.get(); // Wait until the ListView has been populated before setting 'syncInProgress' to false again
+                        updateChatList.get();           // Wait until the ListView has been populated before setting 'syncInProgress' to false again
                     }
-                    catch (InterruptedException e) { 
-                        Alert.display(null, "Sync interrupted.");
+                    catch (InterruptedException | ExecutionException e) { 
+                        Platform.runLater(() -> Alert.display(null, "Sync failed."));
+                        e.printStackTrace();
                     }
-                    catch (ExecutionException e) { 
-                        Alert.display(null, "Sync failed.");
+                    finally {
+                        // Sync complete
+                        TarkovTrader.syncInProgress.compareAndSet(true, false);
                     }
-                    
-                    TarkovTrader.syncInProgress.compareAndSet(true, false);
                 }
                 
                 else
                 {
+                    // Sync complete
                     TarkovTrader.syncInProgress.compareAndSet(true, false);
                 }                
                 
@@ -301,3 +325,12 @@ public class RequestWorker implements Runnable
         }
     }
 }
+
+
+
+/*
+                        Messenger tempMessenger = trader.getMessenger();
+                        int currentIndex = tempMessenger.chatListView.getSelectionModel().getSelectedIndex();
+                        tempMessenger.populate(chatlistform.getChatList());
+                        tempMessenger.chatListView.getSelectionModel().select(currentIndex);
+*/

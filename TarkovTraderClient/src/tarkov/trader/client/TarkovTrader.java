@@ -1,6 +1,8 @@
 package tarkov.trader.client;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.application.Application;
@@ -274,7 +276,15 @@ public class TarkovTrader extends Application {
         // All other resources are generic and can be loaded at launch in the Resources class 'load' method
         
         if (TarkovTrader.userImageFile != null)
-            avatar = new Image(TarkovTrader.userImageFile.toURI().toString());
+        {
+            try {
+                // TESTING HERE
+                //avatar = new Image(TarkovTrader.userImageFile.toURI().toString());
+                avatar = new Image(new FileInputStream(TarkovTrader.userImageFile));
+            } catch (FileNotFoundException ex) {
+                Platform.runLater(() -> Alert.display(null, "Failed load avatar image."));
+            }
+        }
         else
             avatar = new Image(this.getClass().getResourceAsStream("/eftlogo.jpg"));
         

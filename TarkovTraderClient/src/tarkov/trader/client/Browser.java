@@ -14,6 +14,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -45,7 +46,9 @@ public class Browser {
     private Button returnButton;
     private TableView table;
     private MenuBar menubar;
-    private Menu newSearchMenu;
+    private Menu searchMenu;
+    private MenuItem newSearchMenu;
+    private MenuItem clearFiltersMenu;
     private ComboBox<String> typeFilter;
     private ComboBox<String> tradeStatusFilter;
     private ComboBox<String> priceRangeFilter;
@@ -83,9 +86,16 @@ public class Browser {
         
         // Build MenuBar
         menubar = new MenuBar();
-        newSearchMenu = new Menu("Start a New Search");
+        searchMenu = new Menu("Search");
+        
+        newSearchMenu = new MenuItem("Start New Search");
         newSearchMenu.setOnAction(e -> startSearch());
-        menubar.getMenus().addAll(newSearchMenu);
+        
+        clearFiltersMenu = new MenuItem("Clear Filters");
+        clearFiltersMenu.setOnAction(e -> clearFilters());
+        
+        searchMenu.getItems().addAll(newSearchMenu, clearFiltersMenu);
+        menubar.getMenus().addAll(searchMenu);
         
         // Build 'Item Browser' label displayed on top left
         browserLabel = new Label("Item Browser");  // Could use a graphics label instead at some point
@@ -416,6 +426,16 @@ public class Browser {
         browser.close();
         NewSearch newSearch = new NewSearch(trader, this);
         newSearch.display();
+    }
+    
+    
+    private void clearFilters()
+    {
+        tradeStatusFilter.getSelectionModel().clearAndSelect(0);
+                
+        typeFilter.getSelectionModel().clearAndSelect(0);
+                
+        priceRangeFilter.getSelectionModel().clearAndSelect(0);
     }
     
     
