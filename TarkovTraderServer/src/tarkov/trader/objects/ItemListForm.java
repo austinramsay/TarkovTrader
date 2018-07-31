@@ -12,10 +12,12 @@ public class ItemListForm extends Form {
     
     private ArrayList<Item> itemList;
     private HashMap<String, String> searchFlags;
+    private boolean isModerator;
     
-    public ItemListForm(HashMap<String, String> searchFlags)
+    public ItemListForm(HashMap<String, String> searchFlags, boolean isModerator)
     {
         this.searchFlags = searchFlags;
+        this.isModerator = isModerator;
         this.type = "itemlist";
     }
     
@@ -32,6 +34,10 @@ public class ItemListForm extends Form {
         return searchFlags;
     }
     
+    public boolean getModeratorState()
+    {
+        return isModerator;
+    }
     
     // Setters:
     

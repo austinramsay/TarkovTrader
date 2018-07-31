@@ -15,6 +15,7 @@ import javax.xml.bind.DatatypeConverter;
 import tarkov.trader.objects.Chat;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
+import tarkov.trader.objects.ItemModificationRequest;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.NewAccountForm;
 import tarkov.trader.objects.Notification;
@@ -646,6 +647,73 @@ public class DatabaseWorker
     }
     
     // END item list request section
+    
+    
+    
+    /*
+    // Item Modification Section
+    */
+    
+    public boolean processItemModification(ItemModificationRequest itemModRequest, String compareUsername)
+    {
+        String modificationType = itemModRequest.getModificationType();
+        Item itemToModify = itemModRequest.getItemToModify();
+        String itemUsername = itemToModify.getUsername();
+        
+        String command; 
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        
+        if (!itemModRequest.getItemToModify().getUsername().equals(compareUsername))
+        {
+            System.out.println("DBWorker: Failed to authenticate matching user to modify item. Item username is " + itemUsername + " compared to attempted user " + compareUsername + ".");
+            communicator.sendAlert("Authentication failure. Failed to delete listing.");
+            return false;
+        }
+        
+        try 
+        {
+            dbConnection = getDBconnection();
+                        
+            switch (modificationType)
+            {
+                case "delete":
+                    command = "DELETE FROM items WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                    // TODO TODO TODO COMPARE DATE OF STORED ITEM TO REQUESTED ITEM
+                    // TODO TODO TODO TODO
+                    statement = dbConnection.prepareStatement(command);
+                    statement.setString(1, itemToModify.getTradeState());
+                    statement.setString(2, itemToModify.getItemType());
+                    statement.setString(3, itemToModify.getName());
+                    statement.setString(4, itemToModify.getIgn());
+                    statement.setString(5, itemToModify.getUsername());
+                    statement.setString(6, itemToModify.getDealStatus());
+                    int deleteCount = statement.executeUpdate();
+                    System.out.println("DBWorker: " + deleteCount + " item(s) deleted for " + itemUsername + ".");
+                    communicator.sendAlert(deleteCount + " item(s) deleted successfully.");
+                    break;
+            }
+            
+            return true;
+        }
+        catch (SQLException e)
+        {
+            String error = "Item modification failed. Error: " + e.getMessage();
+            e.printStackTrace();
+            System.out.println(error);
+            communicator.sendAlert(error);
+            return false;           
+        }
+        finally 
+        {
+            try {
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after processing item modification for " + compareUsername + "."); }
+        }
+    }
     
     
     

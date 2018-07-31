@@ -15,6 +15,7 @@ import tarkov.trader.objects.Form;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemForm;
 import tarkov.trader.objects.ItemListForm;
+import tarkov.trader.objects.ItemModificationRequest;
 import tarkov.trader.objects.Message;
 import tarkov.trader.objects.Notification;
 
@@ -34,6 +35,10 @@ public class RequestWorker implements Runnable {
     
     private HashMap<String, Chat> chatmap;  // This will be pulled from DB upon authenticated login and when it needs to sync upon receiving new chat
     private HashMap<String, ArrayList<String>> messageCache;  // The cache will be pushed to database upon disconnection   (Username, Message)
+    
+    private final String PRICE_MIN = "0";
+    private final String PRICE_MAX = "50000000";
+    
     
     public RequestWorker(Socket client, Socket clientComm)
     {
@@ -141,6 +146,24 @@ public class RequestWorker implements Runnable {
                 
                 if (authenticateRequest())
                     dbWorker.processItemListRequest(itemlistform);
+                else
+                    sendAuthenticationFailure();
+                
+                break;
+                
+                
+            case "itemmodification":
+                ItemModificationRequest itemModRequest = (ItemModificationRequest)form;
+                
+                if (authenticateRequest())
+                {
+                    // Handle the item modification
+                    dbWorker.processItemModification(itemModRequest, clientUsername);
+                    
+                    // Send the updated list back after modification using the current clients set filters
+                    ItemListForm moderatorListForm = new ItemListForm(itemModRequest.getFilterFlags(), true);
+                    dbWorker.processItemListRequest(moderatorListForm);
+                }
                 else
                     sendAuthenticationFailure();
                 
@@ -812,7 +835,15 @@ public class RequestWorker implements Runnable {
     
     
     /*
-    // Client connection state handling
+    // Item Modification Section
+    */
+    
+    // END Modification Section
+    
+    
+    
+    /*
+    // Client Connection Handling Section
     */
     
     private boolean isOnline(String username)

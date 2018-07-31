@@ -41,6 +41,7 @@ public class TarkovTrader extends Application {
     private NewSearch newSearch;
     private Messenger messenger;
     private NotificationManager notificationManager;
+    private Moderator moderator;
     private Thread workerThread;
     
     // JavaFX variable declarations
@@ -54,6 +55,7 @@ public class TarkovTrader extends Application {
     private ImageView avatarViewer;
     private Label usernameDisplay;
     private Button messageButton;
+    private Button myListingsButton;
     private Button profileButton;
     private Button logoutButton;
     private Button browseButton;
@@ -154,6 +156,7 @@ public class TarkovTrader extends Application {
        
         // Building buttons
         messageButton = new Button("Messages");
+        myListingsButton = new Button("My Listings");
         profileButton = new Button("Profile");
         logoutButton = new Button("Logout");
         browseButton = new Button("Browse All");
@@ -165,6 +168,8 @@ public class TarkovTrader extends Application {
         messageButton.setGraphic(Resources.messagesIconViewer);
         
         profileButton.setGraphic(Resources.profileIconViewer);
+        
+        myListingsButton.setGraphic(Resources.myListingsIconViewer);
         
         logoutButton.setGraphic(Resources.exitIconViewer);
         
@@ -186,14 +191,15 @@ public class TarkovTrader extends Application {
         addItemButton.setOnAction(e -> displayAddItemStage());
         searchButton.setOnAction(e -> displayNewSearch());
         messageButton.setOnAction(e -> displayMessenger());
+        myListingsButton.setOnAction(e -> displayModerator());
         
         
         // Building left display
-        VBox leftDisplay = new VBox(120);
+        VBox leftDisplay = new VBox(80);   // Old value 120
         leftDisplay.setAlignment(Pos.CENTER);
         leftDisplay.getStyleClass().add("vbox");
         leftDisplay.setPadding(new Insets(70,30,85,20));
-        leftDisplay.getChildren().addAll(messageButton, profileButton, logoutButton);
+        leftDisplay.getChildren().addAll(messageButton, myListingsButton, profileButton, logoutButton);
         
         
         // Building center display
@@ -265,8 +271,15 @@ public class TarkovTrader extends Application {
     
     public void displayMessenger()
     {
-        this.messenger = new Messenger(this, worker);
-        this.messenger.display();
+        messenger = new Messenger(this, worker);
+        messenger.display();
+    }
+    
+    
+    private void displayModerator()
+    {
+        moderator = new Moderator(this, worker);
+        moderator.display();
     }
     
     
@@ -306,6 +319,12 @@ public class TarkovTrader extends Application {
     public Browser getBrowser()
     {
         return this.browser;
+    }
+    
+    
+    public Moderator getModerator()
+    {
+        return this.moderator;
     }
     
     

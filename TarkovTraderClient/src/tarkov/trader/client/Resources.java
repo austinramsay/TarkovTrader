@@ -32,6 +32,7 @@ public class Resources
     public static Image addIcon;
     public static Image messagesIcon;
     public static Image profileIcon;
+    public static Image myListingsIcon;
     public static Image refreshIcon;
     public static Image cancelIcon;
     public static Image exitIcon;
@@ -44,6 +45,7 @@ public class Resources
     public static ImageView addIconViewer;
     public static ImageView messagesIconViewer;
     public static ImageView profileIconViewer;
+    public static ImageView myListingsIconViewer;
     public static ImageView refreshIconViewer;
     public static ImageView cancelIconViewer;
     public static ImageView exitIconViewer;
@@ -75,6 +77,9 @@ public class Resources
             
             profileIcon = new Image(resources.getResourceStream("/profileicon.png"), 32, 32, true, true);
             profileIconViewer = new ImageView(profileIcon);
+            
+            myListingsIcon = new Image(resources.getResourceStream("/mylistings.png"), 32, 32, true, true);
+            myListingsIconViewer = new ImageView(myListingsIcon);            
             
             refreshIcon = new Image(resources.getResourceStream("/refresh.png"));
             refreshIconViewer = new ImageView(refreshIcon);

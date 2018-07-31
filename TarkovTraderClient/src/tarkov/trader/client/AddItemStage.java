@@ -3,6 +3,8 @@ package tarkov.trader.client;
 
 import java.io.File;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -123,7 +125,18 @@ public class AddItemStage {
         itemNameInput.setPromptText("Name");
         
         priceInput = new TextField();
-        priceInput.setPromptText("Price");
+        priceInput.setPromptText("Ex. 250,000");
+        priceInput.textProperty().addListener(new ChangeListener<String>() {
+        @Override 
+        public void changed(ObservableValue<? extends String> observable, String oldValue, 
+            String newValue) {
+            if (newValue.matches("[0-9,]*")) {
+                priceInput.setText(newValue);
+            } else {
+                priceInput.setText(oldValue);
+            }
+        }
+        });
         
         keywordsInput = new TextField();
         keywordsInput.setPromptText("Ex. Interchange, Customs");
@@ -279,43 +292,46 @@ public class AddItemStage {
         keywords = keywordsInput.getText();
         notes = notesInput.getText();
         
-        
-        
+               
         if (itemType == null) // Not really necessary to check string length, options are pre-built
         {
-            Platform.runLater(() -> Alert.display("Required Field", "No item type was selected."));
+            Platform.runLater(() -> Alert.display(null, "No item type was selected."));
             return false;
         }
         
         
         if (itemName.equals("") || !isBetween(itemName.length(), 2, 38))  // Not really necessary but just in case
         {
-            Platform.runLater(() -> Alert.display("Name Length", "Item name must be between 3 and 38 characters."));
+            Platform.runLater(() -> Alert.display(null, "Item name must be between 3 and 38 characters."));
             return false;
         }
         
         
         if (!isBetween(keywords.length(), 0, 255))
         {
-            Platform.runLater(() -> Alert.display("Keywords Length", "Keywords must have a maximum length of 255 characters."));
+            Platform.runLater(() -> Alert.display(null, "Keywords must have a maximum length of 255 characters."));
             return false;
         }
         
         
         if (!isBetween(notes.length(), 0, 255))
         {
-            Platform.runLater(() -> Alert.display("Notes Length", "Notes must have a maximum length of 255 characters."));
+            Platform.runLater(() -> Alert.display(null, "Notes must have a maximum length of 255 characters."));
             return false;            
         }
         
         
         if (!postType.equals("WTB"))
-            try { price = Integer.parseInt(priceInput.getText()); } catch (NumberFormatException e) { Platform.runLater(() -> Alert.display("Name Length", "A number was not found in the price input field.")); return false; }
+            try { 
+                String unformattedPrice = priceInput.getText();
+                String formattedPrice = unformattedPrice.replaceAll("[,]", "");
+                price = Integer.parseInt(formattedPrice); 
+            } catch (NumberFormatException e) { Platform.runLater(() -> Alert.display(null, "A number was not found in the price input field.")); return false; }
         
         
         if (!postType.equals("WTB") && (price < 1) || (price > 50000000))
         {
-            Platform.runLater(() -> Alert.display("Price Range", "Specified price is out of range. Enter a number greater than 1 and less than 50 million."));
+            Platform.runLater(() -> Alert.display(null, "Specified price is out of range. Enter a number greater than 1 and less than 50 million."));
             return false;
         }
         

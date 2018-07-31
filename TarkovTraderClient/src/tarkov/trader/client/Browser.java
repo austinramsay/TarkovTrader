@@ -118,7 +118,7 @@ public class Browser {
         // Note: Filter list. See note above
         typeFilter = new ComboBox<>();
         typeFilter.setPromptText("Item Type");
-        typeFilter.getItems().addAll("Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
+        typeFilter.getItems().addAll("All", "Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
         typeFilter.setOnAction(e -> requestItemList());
 
         
@@ -284,11 +284,11 @@ public class Browser {
         
         if (pullSearchFlags)
         {
-            listrequest = new ItemListForm(getSearchFlags());
+            listrequest = new ItemListForm(getSearchFlags(), false);
         }
         else
         {
-            listrequest = new ItemListForm(buildFilterFlags());
+            listrequest = new ItemListForm(buildFilterFlags(), false);
         }
 
         // use worker to send, wait for server response, table will populate upon receiving list

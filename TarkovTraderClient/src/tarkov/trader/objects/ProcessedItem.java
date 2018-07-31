@@ -246,4 +246,10 @@ public class ProcessedItem {
     {
         return item.getSellerState();
     }
+    
+    
+    public Item getItem()
+    {
+        return item;
+    }
 }

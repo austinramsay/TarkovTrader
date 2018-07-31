@@ -2,6 +2,8 @@
 package tarkov.trader.client;
 
 import java.util.HashMap;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -88,7 +90,7 @@ public class NewSearch {
         postTypeDropdown.setPromptText("Trade Status");  // WTS is default value
         
         itemTypeDropdown = new ComboBox<>();
-        itemTypeDropdown.getItems().addAll("Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
+        itemTypeDropdown.getItems().addAll("All", "Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
         itemTypeDropdown.setPromptText("Item Type");
         itemTypeDropdown.setMinWidth(200);
         
@@ -96,10 +98,30 @@ public class NewSearch {
         itemNameInput.setPromptText("Name");
         
         priceMinInput = new TextField();
-        priceMinInput.setPromptText("Minimum");
+        priceMinInput.setPromptText("Minimum (Ex. 0)");
+        priceMinInput.textProperty().addListener(new ChangeListener<String>() {
+        @Override 
+        public void changed(ObservableValue<? extends String> observable, String oldValue, 
+            String newValue) {
+            if (newValue.matches("[0-9,]*")) {
+                priceMinInput.setText(newValue);
+            } else {
+                priceMinInput.setText(oldValue);
+            }
+        } } );        
         
         priceMaxInput = new TextField();
-        priceMaxInput.setPromptText("Maximum");
+        priceMaxInput.setPromptText("Maximum (Ex. 50,000,000)");
+        priceMaxInput.textProperty().addListener(new ChangeListener<String>() {
+        @Override 
+        public void changed(ObservableValue<? extends String> observable, String oldValue, 
+            String newValue) {
+            if (newValue.matches("[0-9,]*")) {
+                priceMaxInput.setText(newValue);
+            } else {
+                priceMaxInput.setText(oldValue);
+            }
+        } } );              
         
         usernameInput = new TextField();
         usernameInput.setPromptText("Seller username");
@@ -213,8 +235,16 @@ public class NewSearch {
         
         HashMap<String, String> searchFlags = new HashMap();
         
-        String priceMin = priceMinInput.getText();
-        String priceMax = priceMaxInput.getText();
+        String unformattedPrice;
+        String formattedPrice;
+                
+        unformattedPrice = priceMinInput.getText();
+        formattedPrice = unformattedPrice.replaceAll("[,]", "");
+        String priceMin = formattedPrice;
+        
+        unformattedPrice = priceMaxInput.getText();
+        formattedPrice = unformattedPrice.replaceAll("[,]", "");        
+        String priceMax = formattedPrice;
         
         String nameFlag = itemNameInput.getText();
         String ignFlag = ignInput.getText();
@@ -230,9 +260,9 @@ public class NewSearch {
         String definedKeywordsFlag;
         
         
-        if (priceMin.equals(""))
+        if (priceMin.isEmpty())
             priceMin = "0";
-        if (priceMax.equals(""))
+        if (priceMax.isEmpty())
             priceMax = "50000000";
         
         
