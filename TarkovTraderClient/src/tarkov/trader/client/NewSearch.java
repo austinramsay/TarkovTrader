@@ -88,7 +88,7 @@ public class NewSearch {
         postTypeDropdown.setPromptText("Trade Status");  // WTS is default value
         
         itemTypeDropdown = new ComboBox<>();
-        itemTypeDropdown.getItems().addAll("All", "Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
+        itemTypeDropdown.getItems().addAll("Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
         itemTypeDropdown.setPromptText("Item Type");
         itemTypeDropdown.setMinWidth(200);
         

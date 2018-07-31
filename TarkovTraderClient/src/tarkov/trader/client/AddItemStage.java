@@ -116,7 +116,7 @@ public class AddItemStage {
         postTypeDropdown.setOnAction(e -> adjustPriceInput());
         
         itemTypeDropdown = new ChoiceBox<>();
-        itemTypeDropdown.getItems().addAll("Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
+        itemTypeDropdown.getItems().addAll("Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
         itemTypeDropdown.setMinWidth(200);
         
         itemNameInput = new TextField();

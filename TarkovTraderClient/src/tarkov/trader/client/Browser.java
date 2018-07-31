@@ -118,7 +118,7 @@ public class Browser {
         // Note: Filter list. See note above
         typeFilter = new ComboBox<>();
         typeFilter.setPromptText("Item Type");
-        typeFilter.getItems().addAll("All", "Key", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
+        typeFilter.getItems().addAll("Key", "Keybar", "Docs Case", "Storage Case", "Secure Container", "Weapon", "Weapon Mod", "Armor/Helmet", "Apparel", "Ammo", "Medicine", "Misc");
         typeFilter.setOnAction(e -> requestItemList());
 
         

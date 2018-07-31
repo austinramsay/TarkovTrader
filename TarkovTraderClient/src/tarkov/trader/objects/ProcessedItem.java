@@ -37,6 +37,15 @@ public class ProcessedItem {
             case "Key":
                 itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/key.png"), 32, 32, true, true));
                 return itemTypeImage;
+            case "Keybar":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/keybar.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Docs Case":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/docscase.png"), 32, 32, true, true));
+                return itemTypeImage;
+            case "Storage Case":
+                itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/storagecase.png"), 32, 32, true, true));
+                return itemTypeImage;                
             case "Secure Container":
                 itemTypeImage = new ImageView(new Image(this.getClass().getResourceAsStream("/securecontainer.png"), 32, 32, true, true));
                 return itemTypeImage;
@@ -114,6 +123,15 @@ public class ProcessedItem {
                 break;
             case "Key":
                 imageFlag = "/generickey.png";
+                break;
+            case "Keybar":
+                imageFlag = "/generickeybar.png";
+                break;
+            case "Docs Case":
+                imageFlag = "/genericdocscase.png";
+                break;
+            case "Storage Case":
+                imageFlag = "/genericstoragecase.png";
                 break;
             case "Weapon":
                 imageFlag = "/genericweapon.png";

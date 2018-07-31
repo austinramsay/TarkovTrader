@@ -357,7 +357,7 @@ public class TarkovTrader extends Application {
     public void close()
     {
         worker.closeNetwork();
-        workerThread.stop();
+        //workerThread.stop();
         Platform.exit();
     }
 }
