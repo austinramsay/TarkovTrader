@@ -25,6 +25,7 @@ public class Item implements Serializable {
     private String keywords;
     private String notes;
     private String date;
+    private boolean suspended;
     
     // To be 'set' by the server
     private int itemId; // Will be set from the database autoincrement id value  --  NOT IN USE for now
@@ -45,6 +46,7 @@ public class Item implements Serializable {
         this.notes = notes;
         this.keywords = keywords;
         this.dealStatus = "open";
+        this.suspended = false;
         setDate();
     }
     
@@ -124,6 +126,11 @@ public class Item implements Serializable {
             return null;
     }
     
+    public boolean getSuspensionState()
+    {
+        return suspended;
+    }
+    
     // Setters:
     
     public void setItemId(int id)
@@ -148,5 +155,10 @@ public class Item implements Serializable {
             this.sellerState = "Online";
         else
             this.sellerState = "Offline";
+    }
+    
+    public void setSuspended(boolean isSuspended)
+    {
+        this.suspended = isSuspended;
     }
 }

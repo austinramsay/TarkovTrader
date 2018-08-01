@@ -11,17 +11,25 @@ import java.util.HashMap;
 public class ItemModificationRequest extends Form {
     
     private String modificationType;
-    private HashMap<String, String> modificationFlags;
     private HashMap<String, String> filterFlags;
     private Item itemToModify;
+    private Item modifiedItem;
     
-    public ItemModificationRequest(String modificationType, HashMap<String, String> modificationFlags, HashMap<String, String> filterFlags, Item itemToModify)
+    public ItemModificationRequest(String modificationType, HashMap<String, String> filterFlags, Item itemToModify)
     {
         this.type = "itemmodification";
         this.modificationType = modificationType;
-        this.modificationFlags = modificationFlags;
         this.filterFlags = filterFlags;
         this.itemToModify = itemToModify;
+    }
+    
+    public ItemModificationRequest(String modificationType, HashMap<String, String> filterFlags, Item itemToModify, Item modifiedItem)
+    {
+        this.type = "itemmodification";
+        this.modificationType = modificationType;
+        this.filterFlags = filterFlags;
+        this.itemToModify = itemToModify;        
+        this.modifiedItem = modifiedItem;
     }
     
     
@@ -31,15 +39,15 @@ public class ItemModificationRequest extends Form {
     }
     
     
-    public String getModificationType()
+    public Item getPreModifiedItem()
     {
-        return modificationType;
+        return modifiedItem;
     }
     
     
-    public HashMap<String, String> getModificationFlags()
+    public String getModificationType()
     {
-        return modificationFlags;
+        return modificationType;
     }
     
     

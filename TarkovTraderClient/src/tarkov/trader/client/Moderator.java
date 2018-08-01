@@ -62,11 +62,12 @@ public class Moderator {
     private ImageView deleteViewer;
     private ImageView suspendViewer;
     
-    TableColumn<Item, ImageView> imageColumn;
-    TableColumn<Item, String> tradeStateColumn;
-    TableColumn<Item, String> typeColumn;
-    TableColumn<Item, String> nameColumn;
-    TableColumn<Item, String> priceColumn;
+    TableColumn<ProcessedItem, ImageView> imageColumn;
+    TableColumn<ProcessedItem, String> tradeStateColumn;
+    TableColumn<ProcessedItem, String> typeColumn;
+    TableColumn<ProcessedItem, String> nameColumn;
+    TableColumn<ProcessedItem, String> priceColumn;
+    TableColumn<ProcessedItem, String> suspensionColumn;
     
     private boolean isPopulated;
     
@@ -101,7 +102,7 @@ public class Moderator {
     
     
     public void display()   // Browser is used by the search feature, If the browser is being used for a direct search, the 'setSearchFlags' method should be called first, and this should be set true
-    {
+    {   
         moderator = new Stage();
         
         // Build 'Item Browser' label displayed on top left
@@ -149,6 +150,7 @@ public class Moderator {
         editButton = new Button("Edit Listing");
         editButton.setGraphic(editViewer);
         editButton.setTooltip(new Tooltip("Make Changes to Listing"));
+        editButton.setOnAction(e -> openEditor());
         
         deleteButton = new Button("Delete Listing");
         deleteButton.setGraphic(deleteViewer);
@@ -158,6 +160,7 @@ public class Moderator {
         suspendButton = new Button("Suspend Listing");
         suspendButton.setGraphic(suspendViewer);
         suspendButton.setTooltip(new Tooltip("Temporarily Remove Listing"));
+        suspendButton.setOnAction(e -> requestSuspension());
         
         refreshButton = new Button("Refresh");
         refreshButton.setGraphic(Resources.refreshIconViewer);
@@ -216,9 +219,22 @@ public class Moderator {
         priceColumn.setMinWidth(100);
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));  // Calls getPrice() in ProcessedItem object
         
-        table = new TableView<>();
-        table.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn);
+        suspensionColumn = new TableColumn<>("Suspended");
+        suspensionColumn.setMaxWidth(100);
+        suspensionColumn.setMinWidth(100);
+        suspensionColumn.setCellValueFactory(new PropertyValueFactory<>("formattedSuspensionState"));  // Calls getSuspensionState() in ProcessedItem object        
         
+        table = new TableView<>();
+        table.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, suspensionColumn);
+        table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            if (newSelection != null)
+            {
+                ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+                setSuspendButton(selectedItem.getSuspensionState());
+            }
+            else
+                setSuspendButton(false);
+        });
         
         VBox centerDisplay = new VBox();
         
@@ -267,10 +283,21 @@ public class Moderator {
     }
     
     
+    private void setSuspendButton(boolean isSuspended)
+    {
+        if (isSuspended)
+            suspendButton.setText("Unsuspend Listing");
+        else
+            suspendButton.setText("Suspend Listing");
+        
+    }
+    
+    
     public void populate(ArrayList<ProcessedItem> itemList)
     {
         // Called by RequestWorker and passed the ArrayList to process 
         // Calls getItemList to retrieve an OberservableList of processed items for CellValueFactory to fetch data
+        
         table.setItems(getItemList(itemList));
     }
     
@@ -299,7 +326,7 @@ public class Moderator {
     }
     
     
-    private HashMap<String, String> buildFilterFlags()
+    public HashMap<String, String> buildFilterFlags()
     {
         // Trade status, Type, and Price filters
         
@@ -425,12 +452,55 @@ public class Moderator {
             return false;
         }
         
-        ProcessedItem processedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
-        Item itemToModify = processedItem.getItem();
+        ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+        Item itemToModify = selectedItem.getItem();
         
-        ItemModificationRequest deleteRequest = new ItemModificationRequest("delete", null, buildFilterFlags(), itemToModify);
+        ItemModificationRequest deleteRequest = new ItemModificationRequest("delete", buildFilterFlags(), itemToModify);
         
         worker.sendForm(deleteRequest);
+        
+        return true;
+    }
+    
+    
+    private boolean requestSuspension()
+    {
+        if (table.getSelectionModel().isEmpty())
+        {
+            // There is no listing to be deleted
+            Platform.runLater(() -> Alert.display(null, "No item listing selected."));
+            return false;
+        }
+
+        ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+        Item itemToModify = selectedItem.getItem();
+        
+        boolean toSuspend = !itemToModify.getSuspensionState();
+        
+        itemToModify.setSuspended(toSuspend);
+        
+        ItemModificationRequest suspendRequest = new ItemModificationRequest("suspend", buildFilterFlags(), itemToModify);
+        
+        worker.sendForm(suspendRequest);
+        
+        return true;
+    }
+    
+    
+    private boolean openEditor()
+    {
+        if (table.getSelectionModel().isEmpty())
+        {
+            // There is no listing to be edited
+            Platform.runLater(() -> Alert.display(null, "No item listing selected."));
+            return false;            
+        }
+        
+        ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+        
+        Item itemToEdit = selectedItem.getItem();
+        
+        ItemEditor editor = new ItemEditor(this, worker, itemToEdit);
         
         return true;
     }

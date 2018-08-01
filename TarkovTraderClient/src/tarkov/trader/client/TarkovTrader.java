@@ -280,6 +280,7 @@ public class TarkovTrader extends Application {
     {
         moderator = new Moderator(this, worker);
         moderator.display();
+        primaryStage.close();
     }
     
     

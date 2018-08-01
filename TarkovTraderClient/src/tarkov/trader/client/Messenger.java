@@ -298,19 +298,29 @@ public class Messenger {
     
     public void populate(ArrayList<Chat> chatList)
     {
-        chatListView.setItems(getChatList(chatList));
+        ObservableList<Chat> observableChatList = FXCollections.observableArrayList(chatList);
+        
+        chatListView.setItems(getSortedChatList(observableChatList));
     }
     
     
     private void populateNewChat(ObservableList<Chat> newChatList)
     {
-        chatListView.setItems(newChatList);
+        chatListView.setItems(getSortedChatList(newChatList));
     }
-        
     
-    private ObservableList<Chat> getChatList(ArrayList<Chat> chatList)
+    
+    public SortedList<Chat> getSortedChatList(ObservableList<Chat> observableChatList)
     {
-        return FXCollections.observableArrayList(chatList);
+        SortedList<Chat> sortedChatList = new SortedList<>(observableChatList, new Comparator<Chat>() {
+            @Override
+            public int compare(Chat arg1, Chat arg2)
+            {
+                return arg1.getName(TarkovTrader.username).compareToIgnoreCase(arg2.getName(TarkovTrader.username));
+            }
+        });        
+        
+        return sortedChatList;
     }
     
     
@@ -382,7 +392,9 @@ public class Messenger {
                                             else
                                             {
                                                 // This chat already exists..
-                                                Platform.runLater(() -> Alert.display(null, "A chat for " + username + " already exists."));          
+                                                findAndSelect(username);  
+                                                prompt.close();
+                                                Platform.runLater(() -> Alert.display(null, "Chat already exists. Selected " + username + "."));
                                             }
                                         }
                                     }
@@ -535,7 +547,10 @@ public class Messenger {
     private boolean buildNewChat(String destination)
     {
         Chat newchat = new Chat(TarkovTrader.username, destination, null);
-        chatListView.getItems().add(newchat);
+        ObservableList<Chat> currentList = FXCollections.observableArrayList(chatListView.getItems());
+        currentList.add(newchat);
+        populateNewChat(currentList);
+        
         chatListView.getSelectionModel().select(newchat);
         
         chatDisplay.setText("New chat to: " + newchat.getDestination());
@@ -552,6 +567,23 @@ public class Messenger {
             if (openChat.getName(TarkovTrader.username).equals(destination))
                 return true;
         }
+        
+        return false;
+    }
+    
+    
+    private boolean findAndSelect(String destination)
+    {
+        // Checks if a chat with the corresponding destination name already exists, and select it
+        for (Chat openChat : chatListView.getItems())
+        {
+            if (openChat.getName(TarkovTrader.username).equals(destination))
+            {
+                chatListView.getSelectionModel().select(openChat);
+                unpackChatMessages(openChat.getMessages());
+                return true;
+            }
+        }        
         
         return false;
     }

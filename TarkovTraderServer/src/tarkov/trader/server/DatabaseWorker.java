@@ -658,11 +658,13 @@ public class DatabaseWorker
     {
         String modificationType = itemModRequest.getModificationType();
         Item itemToModify = itemModRequest.getItemToModify();
+        Item preModifiedItem = itemModRequest.getPreModifiedItem();
         String itemUsername = itemToModify.getUsername();
         
         String command; 
         Connection dbConnection = null;
         PreparedStatement statement = null;
+        ResultSet result = null;
         
         if (!itemModRequest.getItemToModify().getUsername().equals(compareUsername))
         {
@@ -678,7 +680,9 @@ public class DatabaseWorker
             switch (modificationType)
             {
                 case "delete":
+                    
                     command = "DELETE FROM items WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                    
                     // TODO TODO TODO COMPARE DATE OF STORED ITEM TO REQUESTED ITEM
                     // TODO TODO TODO TODO
                     statement = dbConnection.prepareStatement(command);
@@ -692,7 +696,89 @@ public class DatabaseWorker
                     System.out.println("DBWorker: " + deleteCount + " item(s) deleted for " + itemUsername + ".");
                     communicator.sendAlert(deleteCount + " item(s) deleted successfully.");
                     break;
-            }
+                    
+                    
+                case "edit":
+                    
+                    // First, update the ItemObject in the database
+                    command = "UPDATE items SET ItemObject = ?, ItemId = (SELECT @update_id := ItemId) "
+                            + "WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                    
+                    statement = dbConnection.prepareStatement("SET @update_id := 0;");
+                    statement.execute();
+                    
+                    statement = dbConnection.prepareStatement(command);
+                    statement.setObject(1, preModifiedItem);
+                    statement.setString(2, itemToModify.getTradeState());
+                    statement.setString(3, itemToModify.getItemType());
+                    statement.setString(4, itemToModify.getName());
+                    statement.setString(5, itemToModify.getIgn());
+                    statement.setString(6, itemToModify.getUsername());
+                    statement.setString(7, itemToModify.getDealStatus());                    
+                    int objectEditCount = statement.executeUpdate();
+                    
+                    
+                    // Now, update the entry in the database
+                    statement = dbConnection.prepareStatement("SELECT @update_id;");
+                    result = statement.executeQuery();
+                    int itemId = 0;
+                    if (result.first())
+                        itemId = result.getInt(1);
+                    
+                    command = "UPDATE items SET State=?, Type=?, Name=?, Price=?, Keywords=?, Notes=? WHERE ItemId=?;";
+                    statement = dbConnection.prepareStatement(command);
+                    statement.setString(1, preModifiedItem.getTradeState());
+                    statement.setString(2, preModifiedItem.getItemType());
+                    statement.setString(3, preModifiedItem.getName());
+                    statement.setInt(4, preModifiedItem.getPrice());
+                    statement.setString(5, preModifiedItem.getKeywords());
+                    statement.setString(6, preModifiedItem.getNotes());
+                    statement.setInt(7, itemId);
+                    int entryEditCount = statement.executeUpdate();
+                    
+                    if (entryEditCount != objectEditCount)
+                    {
+                        communicator.sendAlert("Item was modified but there was an issue applying all changes.");
+                        System.out.println("DBWorker: Modification request exception. " + entryEditCount + " entries were modifed with " + objectEditCount + " object(s) edited.");
+                        return false;
+                    }
+                    
+                    System.out.println("DBWorker: " + entryEditCount + " item(s) edited for " + itemUsername);
+                    communicator.sendAlert(entryEditCount + " item(s) successfully edited.");
+                    break;
+                    
+                    
+                case "suspend":
+                    
+                    command = "UPDATE items SET ItemObject=? WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                    
+                    // TODO TODO TODO COMPARE DATE OF STORED ITEM TO REQUESTED ITEM
+                    // TODO TODO TODO TODO
+                    statement = dbConnection.prepareStatement(command);
+                    statement.setObject(1, itemToModify);
+                    statement.setString(2, itemToModify.getTradeState());
+                    statement.setString(3, itemToModify.getItemType());
+                    statement.setString(4, itemToModify.getName());
+                    statement.setString(5, itemToModify.getIgn());
+                    statement.setString(6, itemToModify.getUsername());
+                    statement.setString(7, itemToModify.getDealStatus());
+                    int suspendCount = statement.executeUpdate();
+                    
+                    boolean isSuspended = itemToModify.getSuspensionState();
+                    
+                    if (isSuspended)
+                    {
+                        System.out.println("DBWorker: " + suspendCount + " item(s) suspended for " + itemUsername + ".");
+                        communicator.sendAlert(suspendCount + " item(s) suspended.");
+                    }
+                    else
+                    {
+                        System.out.println("DBWorker: " + suspendCount + " item(s) unsuspended for " + itemUsername + ".");
+                        communicator.sendAlert(suspendCount + " item(s) unsuspended.");                        
+                    }
+                    
+                    break;                    
+                }
             
             return true;
         }
@@ -707,6 +793,8 @@ public class DatabaseWorker
         finally 
         {
             try {
+                if (result != null)
+                    result.close();
                 if (statement != null)
                     statement.close();
                 if (dbConnection != null)
@@ -866,6 +954,7 @@ public class DatabaseWorker
     }
     
     // END CHAT SECTION
+    
     
     
     //

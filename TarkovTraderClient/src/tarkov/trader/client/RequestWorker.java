@@ -162,9 +162,9 @@ public class RequestWorker implements Runnable
                 // Convert the 'Item's to 'ProcessedItem's and get an arraylist of ProcessedItems to send to browser
                 
                 if (itemlistform.getModeratorState())  // The requested item list was for the Moderator, populate the Moderator
-                    trader.getModerator().populate(getProcessedItemList(itemlistform));
+                    Platform.runLater(() -> trader.getModerator().populate(getProcessedItemList(itemlistform)));
                 else                                   // The requested item list was for the Browser, populate the Browser
-                    trader.getBrowser().populate(getProcessedItemList(itemlistform));
+                    Platform.runLater(() -> trader.getBrowser().populate(getProcessedItemList(itemlistform)));
                 
                 break;
                 

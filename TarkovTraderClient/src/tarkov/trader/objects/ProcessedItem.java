@@ -248,6 +248,21 @@ public class ProcessedItem {
     }
     
     
+    public boolean getSuspensionState()
+    {
+        return item.getSuspensionState();
+    }
+    
+    
+    public String getFormattedSuspensionState()
+    {
+        if (item.getSuspensionState() == true)
+            return "Yes";
+        else
+            return "No";
+    }
+    
+    
     public Item getItem()
     {
         return item;

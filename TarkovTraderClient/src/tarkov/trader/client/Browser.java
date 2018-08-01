@@ -268,6 +268,16 @@ public class Browser {
     {
         // Called by RequestWorker and passed the ArrayList to process 
         // Calls getItemList to retrieve an OberservableList of processed items for CellValueFactory to fetch data
+        ArrayList<ProcessedItem> toRemove = new ArrayList<>();
+        
+        for (ProcessedItem item : itemList)
+        {
+            if (item.getSuspensionState() == true)
+                toRemove.add(item);
+        }
+        
+        itemList.removeAll(toRemove);
+        
         table.setItems(getItemList(itemList));
     }
     
