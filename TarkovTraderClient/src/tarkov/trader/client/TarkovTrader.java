@@ -22,7 +22,13 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import tarkov.trader.objects.AccountFlag;
+import tarkov.trader.objects.Item;
 import tarkov.trader.objects.Notification;
+import tarkov.trader.objects.Profile;
+import tarkov.trader.objects.Sale;
+import tarkov.trader.objects.SaleType;
+import tarkov.trader.objects.SaleStatus;
 
 /**
  *
@@ -71,7 +77,7 @@ public class TarkovTrader extends Application {
     public static File userImageFile;
     public static boolean connected;
     public static volatile boolean authenticated;
-    public static AtomicBoolean syncInProgress;
+    public static AtomicBoolean syncInProgress;   // syncInProgress is the only variable accessed by another thread (RequestWorker), thus the need for AtomicBoolean
     
     public static volatile ArrayList<String> currentChats;
     public static volatile ArrayList<String> userList;
@@ -192,10 +198,11 @@ public class TarkovTrader extends Application {
         searchButton.setOnAction(e -> displayNewSearch());
         messageButton.setOnAction(e -> displayMessenger());
         myListingsButton.setOnAction(e -> displayModerator());
+        profileButton.setOnAction(e -> displayProfile());
         
         
         // Building left display
-        VBox leftDisplay = new VBox(80);   // Old value 120
+        VBox leftDisplay = new VBox(80);   
         leftDisplay.setAlignment(Pos.CENTER);
         leftDisplay.getStyleClass().add("vbox");
         leftDisplay.setPadding(new Insets(70,30,85,20));
@@ -281,6 +288,36 @@ public class TarkovTrader extends Application {
         moderator = new Moderator(this, worker);
         moderator.display();
         primaryStage.close();
+    }
+    
+    
+    private void displayProfile()
+    {
+        Profile testProfile = new Profile(TarkovTrader.username, TarkovTrader.ign, TarkovTrader.timezone);
+        testProfile.appendFlag(AccountFlag.MULTIPLE_REG);
+        testProfile.appendFlag(AccountFlag.CONFIRMED_HIGH_SELL_REP);
+        testProfile.appendFlag(AccountFlag.NEW_ACCOUNT);
+        testProfile.appendFlag(AccountFlag.VERIFIED_SUB);
+        //testProfile.appendFlag(AccountFlag.CONFIRMED_SCAM);
+        //testProfile.appendFlag(AccountFlag.CONFIRMED_MULTIPLE_SCAM);
+        
+        testProfile.appendSale(new Sale(
+                TarkovTrader.username,
+                "SuperTrooper",
+                new Item(null, null, null, "Mechanic Quest AS-VAL w/ Scope", 250000, TarkovTrader.ign, TarkovTrader.username, "MST", null, null),
+                SaleType.SOLD,
+                SaleStatus.UNCONFIRMED
+        ));
+                
+        testProfile.appendSale(new Sale(
+                TarkovTrader.username,
+                "SuperTrooper",
+                new Item(null, null, null, "KIBA 1 Key", 350000, TarkovTrader.ign, TarkovTrader.username, "MST", null, null),
+                SaleType.BOUGHT,
+                SaleStatus.BUYER_CONFIRMED
+        ));
+        
+        ProfileDisplay profiler = new ProfileDisplay(worker, testProfile);
     }
     
     
@@ -377,7 +414,7 @@ public class TarkovTrader extends Application {
     public void close()
     {
         worker.closeNetwork();
-        //workerThread.stop();
+        workerThread.stop();
         Platform.exit();
     }
 }

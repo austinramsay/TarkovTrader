@@ -19,6 +19,7 @@ import tarkov.trader.objects.ItemModificationRequest;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.NewAccountForm;
 import tarkov.trader.objects.Notification;
+import tarkov.trader.objects.Profile;
 
 // DatabaseWorker class 
 // Handles all database work
@@ -402,9 +403,9 @@ public class DatabaseWorker
     }
     
     
-    public void insertAccountInfo(NewAccountForm newAccount, String clientIp)
+    public void insertAccountInfo(NewAccountForm newAccount, Profile newProfile, String clientIp)
     {        
-        String accountcommand = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, image, ipaddr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        String accountcommand = "INSERT INTO accounts (username, password, salt, firstname, lastname, ign, timezone, image, ipaddr, profile) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         String chatcommand = "INSERT INTO chats (Username, ChatMap) VALUES (?, ?);";
         String notificationscommand = "INSERT INTO notifications (Username, Notifications) VALUES (?, ?);";
         
@@ -428,6 +429,7 @@ public class DatabaseWorker
             statement.setString(7, newAccount.getTimezone());
             statement.setObject(8, newAccount.getUserImageFile());
             statement.setString(9, clientIp);
+            statement.setObject(10, newProfile);
             statement.executeUpdate();
             
             statement = null;

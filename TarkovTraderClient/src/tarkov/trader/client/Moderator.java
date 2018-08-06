@@ -289,7 +289,6 @@ public class Moderator {
             suspendButton.setText("Unsuspend Listing");
         else
             suspendButton.setText("Suspend Listing");
-        
     }
     
     

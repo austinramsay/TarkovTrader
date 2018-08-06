@@ -7,6 +7,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import tarkov.trader.objects.AccountFlag;
 import tarkov.trader.objects.Chat;
 import tarkov.trader.objects.ChatDelete;
 import tarkov.trader.objects.ChatListForm;
@@ -18,6 +19,7 @@ import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.ItemModificationRequest;
 import tarkov.trader.objects.Message;
 import tarkov.trader.objects.Notification;
+import tarkov.trader.objects.Profile;
 
 
 public class RequestWorker implements Runnable {
@@ -116,8 +118,9 @@ public class RequestWorker implements Runnable {
                 
                 if (verifyClientAccountInfo(newAccountInfo))
                 {
-                     dbWorker.insertAccountInfo(newAccountInfo, clientIp);
-                     TarkovTraderServer.syncUserList();  // When a new account is added, the main server needs to be updated so an accurate username list is sent to new client logins
+                    Profile newProfile = buildProfile(newAccountInfo);
+                    dbWorker.insertAccountInfo(newAccountInfo, newProfile, clientIp);
+                    TarkovTraderServer.syncUserList();  // When a new account is added, the main server needs to be updated so an accurate username list is sent to new client logins
                 }
                 
                 break;
@@ -264,7 +267,9 @@ public class RequestWorker implements Runnable {
     
     
     /*
-    // The next method deals with verifying a new account form by checking for uniqueness
+    // NEW ACCOUNTS:
+    // Verifies new account information
+    // Creates a new profile to be inserted by DBWorker
     // The database work is done by the Database Worker
     // DBWorker returns an integer value described below
     // The integer is accessed, and the client is notified accordingly
@@ -320,6 +325,20 @@ public class RequestWorker implements Runnable {
             return true;
         
         return false;
+    }
+    
+    
+    private Profile buildProfile(NewAccountForm newAccountInfo)
+    {
+        // Build a profile with the unique username, IGN, and set their timezone
+        Profile profile = new Profile(newAccountInfo.getUsername(), newAccountInfo.getIgn(), newAccountInfo.getTimezone());
+        
+        // The account is new, so we'll mark a flag to warn that the account is under 2 weeks old, and has not yet completed any sales
+        profile.appendFlag(AccountFlag.NEW_ACCOUNT);
+        profile.appendFlag(AccountFlag.NO_COMPLETED_PURCHASES);
+        profile.appendFlag(AccountFlag.NO_COMPLETED_SALES);
+        
+        return profile;
     }
     
     
