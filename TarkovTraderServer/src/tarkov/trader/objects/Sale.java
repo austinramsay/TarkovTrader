@@ -2,7 +2,9 @@
 package tarkov.trader.objects;
 
 import java.io.Serializable;
-import java.text.NumberFormat;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  *
@@ -17,17 +19,19 @@ public class Sale implements Serializable {
     
     private String sellerName;
     private String buyerName;
-    private SaleCondition condition;
-    private SaleConfirmation confirmed;
+    private String saleDate;
+    private SaleType saleType;
+    private SaleStatus saleStatus;
     private Item soldItem;
     
-    public Sale(String sellerName, String buyerName, Item soldItem, SaleCondition condition, SaleConfirmation confirmed)
+    public Sale(String sellerName, String buyerName, Item soldItem, SaleType saleType, SaleStatus saleStatus)
     {
         this.sellerName = sellerName;
         this.buyerName = buyerName;
         this.soldItem = soldItem;
-        this.condition = condition;
-        this.confirmed = confirmed;
+        this.saleType = saleType;
+        this.saleStatus = saleStatus;
+        setDate();
     }
     
     
@@ -52,35 +56,47 @@ public class Sale implements Serializable {
         return soldItem.getName();
     }
     
-    public String getItemPrice()
+    public String getSaleDate()
     {
-        if (soldItem.getPrice() == 0)
-        {
-            return null;
-        }
-        return NumberFormat.getNumberInstance().format(soldItem.getPrice()) + "₽";
+        return saleDate;
     }
     
-    public SaleCondition getSaleCondition()
+    public SaleType getSaleType()
     {
-        return condition;
+        return saleType;
     }
     
-    public SaleConfirmation getSaleConfirmation()
+    public String getSaleTypeDesc()
     {
-        return confirmed;
+        return saleType.getDescription();
+    }
+    
+    public SaleStatus getSaleStatus()
+    {
+        return saleStatus;
+    }
+    
+    public String getSaleStatusDesc()
+    {
+        return saleStatus.getDescription();
     }
     
     
     // Modifiers
-    public void setSaleCondition(SaleCondition condition)
+    public void setSaleType(SaleType saleType)
     {
-        this.condition = condition;
+        this.saleType = saleType;
     }
     
-    public void setSaleConfirmation(SaleConfirmation confirmed)
+    public void setSaleStatus(SaleStatus saleStatus)
     {
-        this.confirmed = confirmed;
+        this.saleStatus = saleStatus;
+    }
+    
+    private void setDate()
+    {
+        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+        this.saleDate = dateFormat.format(new Date());        
     }
     
 }

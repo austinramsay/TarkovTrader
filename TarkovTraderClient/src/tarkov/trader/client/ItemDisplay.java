@@ -16,6 +16,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import tarkov.trader.objects.ProcessedItem;
+import tarkov.trader.objects.ProfileRequest;
 
 /**
  *
@@ -27,20 +28,9 @@ public class ItemDisplay {
     private ProcessedItem item;
     private RequestWorker worker;
     private TarkovTrader trader;
+    private Resources resourceLoader;
     
-    private Image outlineLogo;
-    private Image cancelIcon;
-    private Image messagesIcon;
-    private Image flagIcon;
-    private Image itemImage;
-    private Image profileIcon;
-    private ImageView outlineLogoViewer;
-    private ImageView cancelIconViewer;
-    private ImageView messagesIconViewer;
-    private ImageView flagIconViewer;
     private ImageView itemImageViewer;
-    private ImageView profileIconViewer;
-    private Image icon;
     
     private Label itemListingLabel;
     private Label actionsLabel;
@@ -65,40 +55,23 @@ public class ItemDisplay {
     
     private Button contactButton;
     private Button profileButton;
+    private Button addToBuyListButton;
     private Button flagButton;
     private Button returnButton;
     
+    private String sellerUsername;
     
-    public ItemDisplay(TarkovTrader trader, RequestWorker worker, ProcessedItem item)
+    public ItemDisplay(TarkovTrader trader, ProcessedItem item)
     {
         this.trader = trader;
-        this.worker = worker;
+        this.worker = trader.getWorker();
         this.item = item;
-        loadResources();
+        this.resourceLoader = new Resources();
+        this.resourceLoader.load();
+        
         display();
     }
-    
-    
-    private void loadResources()
-    {
-        icon = new Image(this.getClass().getResourceAsStream("/tarkovtradericon.png"));
-        
-        outlineLogo = new Image(this.getClass().getResourceAsStream("/tarkovtraderlogooutline.png"), 362, 116, true, true);
-        outlineLogoViewer = new ImageView(outlineLogo);
-            
-        cancelIcon = new Image(this.getClass().getResourceAsStream("/cancel.png"));
-        cancelIconViewer = new ImageView(cancelIcon);
-            
-        messagesIcon = new Image(this.getClass().getResourceAsStream("/messagesicon.png"), 24, 24, true, true);
-        messagesIconViewer = new ImageView(messagesIcon);
-            
-        flagIcon = new Image(this.getClass().getResourceAsStream("/flag.png"), 24, 24, true, true);
-        flagIconViewer = new ImageView(flagIcon);
-            
-        profileIcon = new Image(this.getClass().getResourceAsStream("/profileicon.png"), 24, 24, true, true);
-        profileIconViewer = new ImageView(profileIcon);
-    }
-    
+
     
     private void display()
     {
@@ -145,6 +118,9 @@ public class ItemDisplay {
         priceLabel = new Label(item.getPrice());
         dateLabel = new Label(item.getDate());
         
+        // Set the seller username for contacting/requesting profile
+        sellerUsername = item.getUsername();
+        
         notesArea = new TextArea();
         notesArea.setText("Seller Notes: " + item.getNotes());
         notesArea.setWrapText(true);
@@ -152,7 +128,7 @@ public class ItemDisplay {
         
         // Button initialization
         contactButton = new Button("Contact Seller");
-        contactButton.setGraphic(messagesIconViewer);
+        contactButton.setGraphic(resourceLoader.getSmallMessagesIcon());
         contactButton.setOnAction(e -> {
             
             Messenger messenger;
@@ -168,21 +144,34 @@ public class ItemDisplay {
                 messenger.display();
                 trader.setMessenger(messenger);      
             }
-
-            Messenger.contactSeller(messenger, item.getUsername(), item.getName());
+            
+            Messenger.contactSeller(messenger, sellerUsername, true, item.getName());
             
             itemdisplay.close();
             
         });
         
         profileButton = new Button("Seller Profile");
-        profileButton.setGraphic(profileIconViewer);
+        profileButton.setGraphic(resourceLoader.getSmallProfileIcon());
+        profileButton.setOnAction(e -> {
+            
+            // Build a profile request for the seller's profile
+            ProfileRequest profileRequest = new ProfileRequest(sellerUsername);
+            worker.sendForm(profileRequest);
+            
+            // Request worker will handle from this point
+            
+        });
+        
+        addToBuyListButton = new Button("Add To Buy List");
+        addToBuyListButton.setGraphic(new ImageView(new Image(this.getClass().getResourceAsStream("/addmid.png"), 24, 24, true, true)));
+        addToBuyListButton.setOnAction(e -> addItemToBuyList());
         
         flagButton = new Button("Flag Item");
-        flagButton.setGraphic(flagIconViewer);
+        flagButton.setGraphic(resourceLoader.getFlagIcon());
         
         returnButton = new Button("Return");
-        returnButton.setGraphic(cancelIconViewer);
+        returnButton.setGraphic(resourceLoader.getCancelIcon());
         returnButton.setOnAction(e -> itemdisplay.close());
         
         if (TarkovTrader.username.equals(item.getUsername()))
@@ -209,7 +198,7 @@ public class ItemDisplay {
         HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
         upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
               
-        upperDisplayRight.getChildren().add(outlineLogoViewer);
+        upperDisplayRight.getChildren().add(resourceLoader.getOutlineLogo());
         
         upperDisplay.getChildren().addAll(itemListingLabel, upperDisplayRight);  // Note: itemListingLabel has padding 20 left on initialization
         
@@ -222,7 +211,7 @@ public class ItemDisplay {
         VBox leftDisplay = new VBox(40);
         leftDisplay.setPadding(new Insets(0,20,20,20));
         leftDisplay.setAlignment(Pos.CENTER);
-        leftDisplay.getChildren().addAll(actionsLabel, contactButton, profileButton, flagButton, returnButton);    
+        leftDisplay.getChildren().addAll(actionsLabel, contactButton, profileButton, addToBuyListButton, flagButton, returnButton);    
         leftDisplay.getStyleClass().add("vbox");
         
         
@@ -320,12 +309,19 @@ public class ItemDisplay {
         // Setup the stage and scene
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
+        
         itemdisplay.setScene(scene);
         itemdisplay.setResizable(false);
         itemdisplay.setTitle("Item Viewer");
-        itemdisplay.getIcons().add(icon);
+        itemdisplay.getIcons().add(resourceLoader.getIcon());
         itemdisplay.setOnCloseRequest(e -> itemdisplay.close());
         itemdisplay.show();
+    }
+    
+    
+    private void addItemToBuyList()
+    {
+        
     }
     
 }

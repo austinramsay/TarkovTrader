@@ -38,6 +38,7 @@ public class Browser {
     
     private TarkovTrader trader;
     private RequestWorker worker;
+    private Resources resourceLoader;
     
     private Stage browser;
     private Label browserLabel;
@@ -69,17 +70,19 @@ public class Browser {
     private final String PRICE_MAX = "50000000";
     
     
-    public Browser(TarkovTrader trader, RequestWorker worker)
+    public Browser(TarkovTrader trader)
     {
         this.trader = trader;
-        this.worker = worker;
+        this.worker = trader.getWorker();
+        this.resourceLoader = new Resources();
+        resourceLoader.load();
         
         this.isPopulated = false;
     }
     
     
     public void display(boolean pullSearchFlags)   // Browser is used by the search feature, If the browser is being used for a direct search, the 'setSearchFlags' method should be called first, and this should be set true
-    {
+    {        
         this.pullSearchFlags = pullSearchFlags;
         
         browser = new Stage();
@@ -131,11 +134,11 @@ public class Browser {
         
         // Build buttons on bottom of filter selection VBox
         refreshButton = new Button("Refresh");
-        refreshButton.setGraphic(Resources.refreshIconViewer);
+        refreshButton.setGraphic(resourceLoader.getRefreshIcon());
         refreshButton.setOnAction(e -> requestItemList());
         
         returnButton = new Button("Return");
-        returnButton.setGraphic(Resources.cancelIconViewer);
+        returnButton.setGraphic(resourceLoader.getCancelIcon());
         returnButton.setOnAction(e -> close());
         
         
@@ -149,7 +152,7 @@ public class Browser {
         upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
         browserLabel.setPadding(new Insets(0,0,0,20));
-        upperDisplayRight.getChildren().add(Resources.outlineLogoViewer);
+        upperDisplayRight.getChildren().add(resourceLoader.getOutlineLogo());
         upperDisplayLeft.getChildren().addAll(browserLabel, upperDisplayRight);
         upperDisplayLeft.getStyleClass().add("hbox");
         
@@ -220,7 +223,7 @@ public class Browser {
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         browser.setTitle("Item Browser");
-        browser.getIcons().add(Resources.icon);
+        browser.getIcons().add(resourceLoader.getIcon());
         browser.setOnCloseRequest(e -> close());  // For now, only closes the browser stage and reopens the main trader user interface
         browser.setResizable(false);
         browser.setScene(scene);
@@ -257,9 +260,12 @@ public class Browser {
     
     private void displaySelectedItem(MouseEvent e)
     {
+        if (table.getSelectionModel().isEmpty())
+            return;
+        
         if (e.getClickCount() == 2)
         {
-            ItemDisplay itemdisplay = new ItemDisplay(trader, worker, (ProcessedItem)table.getSelectionModel().getSelectedItem());
+            ItemDisplay itemdisplay = new ItemDisplay(trader, (ProcessedItem)table.getSelectionModel().getSelectedItem());
         }
     }
     

@@ -12,6 +12,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
@@ -37,6 +39,7 @@ public class Moderator {
     
     private TarkovTrader trader;
     private RequestWorker worker;
+    private Resources resourceLoader;
     
     private Stage moderator;
     private Label moderatorLabel;
@@ -48,10 +51,14 @@ public class Moderator {
     private Button suspendButton;
     private Button refreshButton;
     private Button returnButton;
-    private TableView table;
+    private TableView sellingTable;
+    private TableView buyingTable;
     private ComboBox<String> typeFilter;
     private ComboBox<String> tradeStatusFilter;
     private ComboBox<String> priceRangeFilter;
+    private TabPane tableSelector;
+    private Tab sellingTab;
+    private Tab buyingTab;
     
     private Image minusImage;
     private Image editImage;
@@ -62,22 +69,26 @@ public class Moderator {
     private ImageView deleteViewer;
     private ImageView suspendViewer;
     
-    TableColumn<ProcessedItem, ImageView> imageColumn;
-    TableColumn<ProcessedItem, String> tradeStateColumn;
-    TableColumn<ProcessedItem, String> typeColumn;
-    TableColumn<ProcessedItem, String> nameColumn;
-    TableColumn<ProcessedItem, String> priceColumn;
-    TableColumn<ProcessedItem, String> suspensionColumn;
+    private TableColumn<ProcessedItem, ImageView> imageColumn;
+    private TableColumn<ProcessedItem, String> tradeStateColumn;
+    private TableColumn<ProcessedItem, String> typeColumn;
+    private TableColumn<ProcessedItem, String> nameColumn;
+    private TableColumn<ProcessedItem, String> priceColumn;
+    private TableColumn<ProcessedItem, String> suspensionColumn;
+    private TableColumn<ProcessedItem, String> timezoneColumn;
+    private TableColumn<ProcessedItem, String> ignColumn;
     
     private boolean isPopulated;
     
     private final String PRICE_MAX = "50000000";
     
     
-    public Moderator(TarkovTrader trader, RequestWorker worker)
+    public Moderator(TarkovTrader trader)
     {
         this.trader = trader;
-        this.worker = worker;
+        this.worker = trader.getWorker();
+        this.resourceLoader = new Resources();
+        this.resourceLoader.load();
         
         this.isPopulated = false;
         
@@ -163,11 +174,11 @@ public class Moderator {
         suspendButton.setOnAction(e -> requestSuspension());
         
         refreshButton = new Button("Refresh");
-        refreshButton.setGraphic(Resources.refreshIconViewer);
+        refreshButton.setGraphic(resourceLoader.getRefreshIcon());
         refreshButton.setOnAction(e -> requestItemList());
         
         returnButton = new Button("Return");
-        returnButton.setGraphic(Resources.cancelIconViewer);
+        returnButton.setGraphic(resourceLoader.getCancelIcon());
         returnButton.setOnAction(e -> close());
         
         
@@ -181,7 +192,7 @@ public class Moderator {
         upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
         moderatorLabel.setPadding(new Insets(0,0,0,20));
-        upperDisplayRight.getChildren().add(Resources.outlineLogoViewer);
+        upperDisplayRight.getChildren().add(resourceLoader.getOutlineLogo());
         upperDisplay.getChildren().addAll(moderatorLabel, upperDisplayRight);
         upperDisplay.getStyleClass().add("hbox");
         
@@ -224,18 +235,68 @@ public class Moderator {
         suspensionColumn.setMinWidth(100);
         suspensionColumn.setCellValueFactory(new PropertyValueFactory<>("formattedSuspensionState"));  // Calls getSuspensionState() in ProcessedItem object        
         
-        table = new TableView<>();
-        table.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, suspensionColumn);
-        table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+        // The IGN and timezone columns are unique to the buying table
+        ignColumn = new TableColumn<>("In-game Name");
+        ignColumn.setMaxWidth(220);
+        ignColumn.setMinWidth(220);
+        ignColumn.setCellValueFactory(new PropertyValueFactory<>("ign"));  // Calls getIgn() in ProcessedItem object
+        
+        timezoneColumn = new TableColumn<>("Timezone");
+        timezoneColumn.setMaxWidth(100);
+        timezoneColumn.setMinWidth(100);
+        timezoneColumn.setCellValueFactory(new PropertyValueFactory<>("timezone"));  // Calls getTimezone() in ProcessedItem object     
+        
+        sellingTable = new TableView<>();
+        sellingTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null)
             {
-                ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+                ProcessedItem selectedItem = (ProcessedItem)sellingTable.getSelectionModel().getSelectedItem();
                 setSuspendButton(selectedItem.getSuspensionState());
             }
             else
                 setSuspendButton(false);
         });
         
+        
+        // Buying table
+        buyingTable = new TableView<>();
+        
+        
+        // Tabs
+        tableSelector = new TabPane();
+        sellingTab = new Tab("Selling");
+        sellingTab.setClosable(false);
+        
+        buyingTab = new Tab("Buying");
+        buyingTab.setClosable(false);
+        
+        tableSelector.getTabs().addAll(sellingTab, buyingTab);
+        sellingTab.setContent(sellingTable);
+        buyingTab.setContent(buyingTable);
+        
+        
+        // Tab Pane
+        tableSelector.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            
+            sellingTable.getColumns().clear();
+            buyingTable.getColumns().clear();            
+            
+            if (newSelection == sellingTab)
+            {
+                sellingTable.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, suspensionColumn);
+            }
+            else if (newSelection == buyingTab)
+            {
+                buyingTable.getColumns().addAll(imageColumn, typeColumn, tradeStateColumn, nameColumn, priceColumn, ignColumn, timezoneColumn);
+            }
+            
+        });
+        
+        tableSelector.getSelectionModel().clearSelection();
+        tableSelector.getSelectionModel().select(sellingTab);
+        
+        
+        // Main content
         VBox centerDisplay = new VBox();
         
         VBox lowerDisplay = new VBox(20);
@@ -249,8 +310,8 @@ public class Moderator {
         
         lowerDisplay.getChildren().addAll(actionsLabel, buttonBox);
         
-        centerDisplay.getChildren().addAll(table, lowerDisplay);
-         
+        centerDisplay.getChildren().addAll(tableSelector, lowerDisplay);
+        
         
         // Border pane layout: Uses top, left, and center sections
         BorderPane border = new BorderPane();
@@ -263,7 +324,7 @@ public class Moderator {
         Scene scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         moderator.setTitle("Moderator");
-        moderator.getIcons().add(Resources.icon);
+        moderator.getIcons().add(resourceLoader.getIcon());
         moderator.setOnCloseRequest(e -> close());  // For now, only closes the browser stage and reopens the main trader user interface
         moderator.setResizable(false);
         moderator.setScene(scene);
@@ -297,7 +358,12 @@ public class Moderator {
         // Called by RequestWorker and passed the ArrayList to process 
         // Calls getItemList to retrieve an OberservableList of processed items for CellValueFactory to fetch data
         
-        table.setItems(getItemList(itemList));
+        Tab selectedTab = tableSelector.getSelectionModel().getSelectedItem();
+        
+        if (selectedTab == sellingTab)
+            sellingTable.setItems(getItemList(itemList));
+        else if (selectedTab == buyingTab)
+            buyingTable.setItems(getItemList(itemList));
     }
     
     
@@ -305,21 +371,27 @@ public class Moderator {
     {
         return FXCollections.observableArrayList(itemList);
     }
-
+    
     
     private boolean requestItemList()
     {
-        ItemListForm listrequest;
-       
-        listrequest = new ItemListForm(buildFilterFlags(), true);
+        ItemListForm listrequest = new ItemListForm(buildFilterFlags(), true);
         
-
-        // Use worker to send, wait for server response, table will populate upon receiving list
+        // If the buying table is open, we'll need a special flag for the list request
+        // To get items the user has added to their buying list, we'll need to flag our items list request
+        if (tableSelector.getSelectionModel().getSelectedItem() == buyingTab)
+        {
+            ArrayList<String> buyListFlags = new ArrayList<>();
+            buyListFlags.add("buylist");
+            listrequest.setFlags(buyListFlags);
+        }
+        
+        // Use worker to send, wait for server response, sellingTable will populate upon receiving list
         if (!worker.sendForm(listrequest))
         {
             Platform.runLater(() -> Alert.display("Request Failed", "Failed to send item list request to server."));
             return false;
-        }
+        }  
         
         return true;
     }
@@ -444,14 +516,14 @@ public class Moderator {
     
     private boolean requestDelete()
     {
-        if (table.getSelectionModel().isEmpty())
+        if (sellingTable.getSelectionModel().isEmpty())
         {
             // There is no listing to be deleted
             Platform.runLater(() -> Alert.display(null, "No item listing selected."));
             return false;
         }
         
-        ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+        ProcessedItem selectedItem = (ProcessedItem)sellingTable.getSelectionModel().getSelectedItem();
         Item itemToModify = selectedItem.getItem();
         
         ItemModificationRequest deleteRequest = new ItemModificationRequest("delete", buildFilterFlags(), itemToModify);
@@ -464,14 +536,14 @@ public class Moderator {
     
     private boolean requestSuspension()
     {
-        if (table.getSelectionModel().isEmpty())
+        if (sellingTable.getSelectionModel().isEmpty())
         {
             // There is no listing to be deleted
             Platform.runLater(() -> Alert.display(null, "No item listing selected."));
             return false;
         }
 
-        ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+        ProcessedItem selectedItem = (ProcessedItem)sellingTable.getSelectionModel().getSelectedItem();
         Item itemToModify = selectedItem.getItem();
         
         boolean toSuspend = !itemToModify.getSuspensionState();
@@ -488,14 +560,14 @@ public class Moderator {
     
     private boolean openEditor()
     {
-        if (table.getSelectionModel().isEmpty())
+        if (sellingTable.getSelectionModel().isEmpty())
         {
             // There is no listing to be edited
             Platform.runLater(() -> Alert.display(null, "No item listing selected."));
             return false;            
         }
         
-        ProcessedItem selectedItem = (ProcessedItem)table.getSelectionModel().getSelectedItem();
+        ProcessedItem selectedItem = (ProcessedItem)sellingTable.getSelectionModel().getSelectedItem();
         
         Item itemToEdit = selectedItem.getItem();
         

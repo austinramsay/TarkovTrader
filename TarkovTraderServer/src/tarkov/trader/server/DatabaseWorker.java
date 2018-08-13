@@ -329,7 +329,7 @@ public class DatabaseWorker
     
     
     /* 
-    // The next section deals with submitting a new account to the database
+    // NEW ACCOUNTS
     // The clients requested username, ign, and ip address are verified for uniqueness
     // The request worker handles verification and uses the existCheck() method before calling for an insert of data
     */
@@ -962,6 +962,7 @@ public class DatabaseWorker
     //
     // This method is used to convert blobs back into objects, needed universally throughout the DBWorker
     //
+    
     private Object convertBlobToObject(byte[] blob)
     {
         Object convertedObject = null;
@@ -1073,6 +1074,27 @@ public class DatabaseWorker
         this.insertNotifications(username, tempNotifications);
         
         return true;
+    }
+    
+    
+    /*
+    // PROFILES
+    */
+    
+    public Profile getProfile(String username)
+    {
+        String command = "SELECT profile FROM accounts WHERE username=?";
+        String columnName = "profile";
+        String onlyParameter = username;
+        
+        byte[] profileBytes = simpleBlobQuery(command, columnName, onlyParameter);
+        
+        if (profileBytes == null)
+            return null;
+        
+        Object profileObject = convertBlobToObject(profileBytes);
+        
+        return (Profile)profileObject;
     }
 }
 

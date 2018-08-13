@@ -719,7 +719,7 @@ public class Messenger {
     }
     
     
-    public static void contactSeller(Messenger messenger, String destination, String itemName)
+    public static void contactSeller(Messenger messenger, String destination, boolean setGenericText, String itemName)
     {
         Task<Void> waitForSync = new Task<Void>() {
             @Override
@@ -752,8 +752,10 @@ public class Messenger {
             {
                 messenger.buildNewChat(destination);
             }
-        
-            messenger.chatInput.setText("Hey " + destination + ". Interested in your '" + itemName + "'.");
+            
+            if (setGenericText)
+                messenger.chatInput.setText("Hey " + destination + ". Interested in your '" + itemName + "'.");
+            
             messenger.chatInput.setOnMouseClicked(me -> messenger.chatInput.clear());        
         
         });

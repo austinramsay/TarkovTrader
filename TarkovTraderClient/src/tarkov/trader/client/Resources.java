@@ -1,8 +1,4 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package tarkov.trader.client;
 
 import java.io.InputStream;
@@ -23,73 +19,73 @@ import javafx.scene.image.ImageView;
 public class Resources 
 {
       
-    public static Image logo;
-    public static Image outlineLogo;
-    public static Image icon;
-    public static Image avatar;
-    public static Image searchIcon;
-    public static Image browserIcon;
-    public static Image addIcon;
-    public static Image messagesIcon;
-    public static Image profileIcon;
-    public static Image myListingsIcon;
-    public static Image refreshIcon;
-    public static Image cancelIcon;
-    public static Image exitIcon;
-    public static Image keyBrowserIcon;
+    private Image logo;
+    private Image outlineLogo;
+    private Image icon;
+    private Image avatar;
+    private Image searchIcon;
+    private Image browserIcon;
+    private Image addIcon;
+    private Image messagesIcon;
+    private Image profileIcon;
+    private Image myListingsIcon;
+    private Image refreshIcon;
+    private Image cancelIcon;
+    private Image flagIcon;
+    private Image exitIcon;
     
-    public static ImageView logoViewer;
-    public static ImageView outlineLogoViewer;
-    public static ImageView searchIconViewer;
-    public static ImageView browserIconViewer;
-    public static ImageView addIconViewer;
-    public static ImageView messagesIconViewer;
-    public static ImageView profileIconViewer;
-    public static ImageView myListingsIconViewer;
-    public static ImageView refreshIconViewer;
-    public static ImageView cancelIconViewer;
-    public static ImageView exitIconViewer;
-    public static ImageView keyBrowserIconViewer;
+    private ImageView logoViewer;
+    private ImageView outlineLogoViewer;
+    private ImageView searchIconViewer;
+    private ImageView browserIconViewer;
+    private ImageView addIconViewer;
+    private ImageView messagesIconViewer;
+    private ImageView profileIconViewer;
+    private ImageView myListingsIconViewer;
+    private ImageView flagIconViewer;
+    private ImageView refreshIconViewer;
+    private ImageView cancelIconViewer;
+    private ImageView exitIconViewer;
     
-    public static void load()
-    {
-            Resources resources = new Resources();
-                                
-            icon = new Image(resources.getResourceStream("/tarkovtradericon.png"));
+    public void load()
+    {         
+        icon = new Image(this.getResourceStream("/tarkovtradericon.png"));
             
-            logo = new Image(resources.getResourceStream("/tarkovtraderlogo.png"), 362, 116, true, true);
-            logoViewer = new ImageView(logo);
-            
-            outlineLogo = new Image(resources.getResourceStream("/tarkovtraderlogooutline.png"), 362, 116, true, true);
-            outlineLogoViewer = new ImageView(outlineLogo);
+        logo = new Image(getResourceStream("/tarkovtraderlogo.png"), 362, 116, true, true);
+        logoViewer = new ImageView(logo);
+          
+        outlineLogo = new Image(getResourceStream("/tarkovtraderlogooutline.png"), 362, 116, true, true);
+        outlineLogoViewer = new ImageView(outlineLogo);
 
-            searchIcon = new Image(resources.getResourceStream("/searchicon.png"), 128, 128, true, true);
-            searchIconViewer = new ImageView(searchIcon);
+        searchIcon = new Image(getResourceStream("/searchicon.png"), 128, 128, true, true);
+        searchIconViewer = new ImageView(searchIcon);
+           
+        browserIcon = new Image(getResourceStream("/browsericon.png"), 128, 128, true, true);
+        browserIconViewer = new ImageView(browserIcon);
+           
+        addIcon = new Image(getResourceStream("/addicon.png"), 128, 128, true, true);
+        addIconViewer = new ImageView(addIcon);
             
-            browserIcon = new Image(resources.getResourceStream("/browsericon.png"), 128, 128, true, true);
-            browserIconViewer = new ImageView(browserIcon);
+        messagesIcon = new Image(getResourceStream("/messagesicon.png"), 32, 32, true, true);
+        messagesIconViewer = new ImageView(messagesIcon);
             
-            addIcon = new Image(resources.getResourceStream("/addicon.png"), 128, 128, true, true);
-            addIconViewer = new ImageView(addIcon);
+        profileIcon = new Image(getResourceStream("/profileicon.png"), 32, 32, true, true);
+        profileIconViewer = new ImageView(profileIcon);
             
-            messagesIcon = new Image(resources.getResourceStream("/messagesicon.png"), 32, 32, true, true);
-            messagesIconViewer = new ImageView(messagesIcon);
+        myListingsIcon = new Image(getResourceStream("/mylistings.png"), 32, 32, true, true);
+        myListingsIconViewer = new ImageView(myListingsIcon);            
+           
+        refreshIcon = new Image(getResourceStream("/refresh.png"));
+        refreshIconViewer = new ImageView(refreshIcon);
+        
+        flagIcon = new Image(this.getClass().getResourceAsStream("/flag.png"), 24, 24, true, true);
+        flagIconViewer = new ImageView(flagIcon);        
             
-            profileIcon = new Image(resources.getResourceStream("/profileicon.png"), 32, 32, true, true);
-            profileIconViewer = new ImageView(profileIcon);
+        cancelIcon = new Image(getResourceStream("/cancel.png"));
+        cancelIconViewer = new ImageView(cancelIcon);
             
-            myListingsIcon = new Image(resources.getResourceStream("/mylistings.png"), 32, 32, true, true);
-            myListingsIconViewer = new ImageView(myListingsIcon);            
-            
-            refreshIcon = new Image(resources.getResourceStream("/refresh.png"));
-            refreshIconViewer = new ImageView(refreshIcon);
-            
-            cancelIcon = new Image(resources.getResourceStream("/cancel.png"));
-            cancelIconViewer = new ImageView(cancelIcon);
-            
-            exitIcon = new Image(resources.getResourceStream("/exiticon.png"), 32, 32, true, true);
-            exitIconViewer = new ImageView(exitIcon);            
-            
+        exitIcon = new Image(getResourceStream("/exiticon.png"), 32, 32, true, true);
+        exitIconViewer = new ImageView(exitIcon);            
     }
     
     
@@ -98,6 +94,86 @@ public class Resources
         return this.getClass().getResourceAsStream(resourceName);
     }
     
+    public Image getIcon()
+    {
+        return icon;
+    }
+    
+    public ImageView getLogo()
+    {
+        return logoViewer;
+    }
+    
+    public ImageView getOutlineLogo()
+    {
+        return outlineLogoViewer;
+    }
+    
+    public ImageView getsearchIcon()
+    {
+        return searchIconViewer;
+    }
+    
+    public ImageView getBrowserIcon()
+    {
+        return browserIconViewer;
+    }
+    
+    public ImageView getAddIcon()
+    {
+        return addIconViewer;
+    }
+    
+    public ImageView getMessagesIcon()
+    {
+        return messagesIconViewer;
+    }
+    
+    public ImageView getFlagIcon()
+    {
+        return flagIconViewer;
+    }
+    
+    public ImageView getSmallMessagesIcon()
+    {
+        ImageView smallMessagesIcon = messagesIconViewer;
+        smallMessagesIcon.setFitHeight(24);
+        smallMessagesIcon.setFitWidth(24);
+        return smallMessagesIcon;
+    }
+    
+    public ImageView getSmallProfileIcon()
+    {
+        ImageView smallProfileIcon = profileIconViewer;
+        smallProfileIcon.setFitHeight(24);
+        smallProfileIcon.setFitWidth(24);
+        return smallProfileIcon;
+    }
+    
+    public ImageView getProfileIcon()
+    {
+        return profileIconViewer;
+    }
+    
+    public ImageView getListingsIcon()
+    {
+        return myListingsIconViewer;
+    }
+    
+    public ImageView getRefreshIcon()
+    {
+        return refreshIconViewer;
+    }
+    
+    public ImageView getCancelIcon()
+    {
+        return cancelIconViewer;
+    }
+    
+    public ImageView getExitIcon()
+    {
+        return exitIconViewer;
+    }
 }
 
 

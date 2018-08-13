@@ -26,6 +26,7 @@ public class NewSearch {
     
     private TarkovTrader trader;
     private Browser browser;
+    private Resources resourceLoader;
     
     private Stage searchStage;
     private Scene scene;
@@ -59,6 +60,8 @@ public class NewSearch {
     {
         this.trader = trader;
         this.browser = browser;
+        this.resourceLoader = new Resources();
+        this.resourceLoader.load();
     }
     
     
@@ -149,7 +152,7 @@ public class NewSearch {
         // Upper display will house the logo
         VBox upperDisplay = new VBox(15);
         upperDisplay.setAlignment(Pos.CENTER);
-        upperDisplay.getChildren().addAll(Resources.logoViewer, searchTipLabel);
+        upperDisplay.getChildren().addAll(resourceLoader.getLogo(), searchTipLabel);
         
         
         // Set positions for all objects
@@ -213,7 +216,7 @@ public class NewSearch {
         scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         searchStage.setTitle("Start New Search");
-        searchStage.getIcons().add(Resources.icon);
+        searchStage.getIcons().add(resourceLoader.getIcon());
         searchStage.setScene(scene);
         searchStage.setResizable(false);
         searchStage.setOnCloseRequest(e -> close());

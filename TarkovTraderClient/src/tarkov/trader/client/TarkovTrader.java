@@ -22,13 +22,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import tarkov.trader.objects.AccountFlag;
-import tarkov.trader.objects.Item;
 import tarkov.trader.objects.Notification;
 import tarkov.trader.objects.Profile;
-import tarkov.trader.objects.Sale;
-import tarkov.trader.objects.SaleType;
-import tarkov.trader.objects.SaleStatus;
+import tarkov.trader.objects.ProfileRequest;
 
 /**
  *
@@ -41,6 +37,7 @@ public class TarkovTrader extends Application {
     
     // Object declarations
     private RequestWorker worker;
+    private Resources resourceLoader;
     public LoginPrompt mainLogin;
     private Browser browser;
     private AddItemStage addItemStage;
@@ -48,7 +45,9 @@ public class TarkovTrader extends Application {
     private Messenger messenger;
     private NotificationManager notificationManager;
     private Moderator moderator;
+    private ProfileDisplay profiler;
     private Thread workerThread;
+    private LoadingAnimator loadingPrompt;
     
     // JavaFX variable declarations
     private Stage primaryStage;
@@ -59,6 +58,8 @@ public class TarkovTrader extends Application {
     private MenuItem logoutMenuItem;
     private Image avatar;
     private ImageView avatarViewer;
+    private Image outlineLogo;
+    private ImageView outlineLogoViewer;
     private Label usernameDisplay;
     private Button messageButton;
     private Button myListingsButton;
@@ -77,7 +78,7 @@ public class TarkovTrader extends Application {
     public static File userImageFile;
     public static boolean connected;
     public static volatile boolean authenticated;
-    public static AtomicBoolean syncInProgress;   // syncInProgress is the only variable accessed by another thread (RequestWorker), thus the need for AtomicBoolean
+    public static AtomicBoolean syncInProgress;  
     
     public static volatile ArrayList<String> currentChats;
     public static volatile ArrayList<String> userList;
@@ -101,8 +102,10 @@ public class TarkovTrader extends Application {
         // Initialize Notification Manager
         startNotificationManager();
         
-        // All resources are loaded into static fields one time and shared across the application
-        Resources.load();
+        resourceLoader = new Resources();
+        resourceLoader.load();
+        
+        loadingPrompt = new LoadingAnimator();
         
         // Networking is needed at launch for login or creating a new account
         startWorker();
@@ -116,7 +119,7 @@ public class TarkovTrader extends Application {
     
     private void displayLogin()
     {
-        mainLogin = new LoginPrompt(this, worker);
+        mainLogin = new LoginPrompt(this);
         mainLogin.display();
     }
     
@@ -149,7 +152,7 @@ public class TarkovTrader extends Application {
         HBox upperDisplayRight = new HBox();
         HBox.setHgrow(upperDisplayRight, Priority.ALWAYS);
         upperDisplayRight.setAlignment(Pos.CENTER_RIGHT);
-        upperDisplayRight.getChildren().add(Resources.outlineLogoViewer);
+        upperDisplayRight.getChildren().add(outlineLogoViewer);
         
         
         // Building upper display for avatar image, username, and HBox for logo
@@ -171,23 +174,23 @@ public class TarkovTrader extends Application {
         
         
         // Set button graphics for left display
-        messageButton.setGraphic(Resources.messagesIconViewer);
+        messageButton.setGraphic(resourceLoader.getMessagesIcon());
         
-        profileButton.setGraphic(Resources.profileIconViewer);
+        profileButton.setGraphic(resourceLoader.getProfileIcon());
         
-        myListingsButton.setGraphic(Resources.myListingsIconViewer);
+        myListingsButton.setGraphic(resourceLoader.getListingsIcon());
         
-        logoutButton.setGraphic(Resources.exitIconViewer);
+        logoutButton.setGraphic(resourceLoader.getExitIcon());
         
         
         // Set button graphics for main central display
-        searchButton.setGraphic(Resources.searchIconViewer);
+        searchButton.setGraphic(resourceLoader.getsearchIcon());
         searchButton.getStyleClass().add("centralDisplayButton");
         
-        browseButton.setGraphic(Resources.browserIconViewer);
+        browseButton.setGraphic(resourceLoader.getBrowserIcon());
         browseButton.getStyleClass().add("centralDisplayButton");
         
-        addItemButton.setGraphic(Resources.addIconViewer);
+        addItemButton.setGraphic(resourceLoader.getAddIcon());
         addItemButton.getStyleClass().add("centralDisplayButton");
         
         
@@ -198,7 +201,7 @@ public class TarkovTrader extends Application {
         searchButton.setOnAction(e -> displayNewSearch());
         messageButton.setOnAction(e -> displayMessenger());
         myListingsButton.setOnAction(e -> displayModerator());
-        profileButton.setOnAction(e -> displayProfile());
+        profileButton.setOnAction(e -> requestProfile(TarkovTrader.username));
         
         
         // Building left display
@@ -235,7 +238,7 @@ public class TarkovTrader extends Application {
         primaryStage.setResizable(false);
         primaryStage.setScene(mainUIscene);
         primaryStage.setTitle("Tarkov Trader");
-        primaryStage.getIcons().add(Resources.icon);
+        primaryStage.getIcons().add(resourceLoader.getIcon());
         primaryStage.show();
         
         if (!TarkovTrader.notificationsList.isEmpty())
@@ -245,15 +248,9 @@ public class TarkovTrader extends Application {
     }
     
     
-    public void displayDrawnUI()  // UNUSED BECAUSE OF STATIC SHARED RESOURCES, CHANGE LATER?
-    {
-        primaryStage.show();
-    }
-    
-    
     private void displayBrowser()
     {
-        browser = new Browser(this, worker);
+        browser = new Browser(this);
         browser.display(false);
         primaryStage.close();
     }
@@ -261,7 +258,7 @@ public class TarkovTrader extends Application {
     
     private void displayAddItemStage()
     {
-        addItemStage = new AddItemStage(this, worker);
+        addItemStage = new AddItemStage(this);
         addItemStage.display();
         primaryStage.close();
     }
@@ -269,7 +266,7 @@ public class TarkovTrader extends Application {
     
     private void displayNewSearch()
     {
-        browser = new Browser(this, worker);
+        browser = new Browser(this);
         newSearch = new NewSearch(this, browser);
         newSearch.display();
         primaryStage.close();
@@ -285,52 +282,36 @@ public class TarkovTrader extends Application {
     
     private void displayModerator()
     {
-        moderator = new Moderator(this, worker);
+        moderator = new Moderator(this);
         moderator.display();
         primaryStage.close();
     }
     
     
-    private void displayProfile()
+    public void requestProfile(String username)
     {
-        Profile testProfile = new Profile(TarkovTrader.username, TarkovTrader.ign, TarkovTrader.timezone);
-        testProfile.appendFlag(AccountFlag.MULTIPLE_REG);
-        testProfile.appendFlag(AccountFlag.CONFIRMED_HIGH_SELL_REP);
-        testProfile.appendFlag(AccountFlag.NEW_ACCOUNT);
-        testProfile.appendFlag(AccountFlag.VERIFIED_SUB);
-        //testProfile.appendFlag(AccountFlag.CONFIRMED_SCAM);
-        //testProfile.appendFlag(AccountFlag.CONFIRMED_MULTIPLE_SCAM);
+        loadingPrompt.display();
         
-        testProfile.appendSale(new Sale(
-                TarkovTrader.username,
-                "SuperTrooper",
-                new Item(null, null, null, "Mechanic Quest AS-VAL w/ Scope", 250000, TarkovTrader.ign, TarkovTrader.username, "MST", null, null),
-                SaleType.SOLD,
-                SaleStatus.UNCONFIRMED
-        ));
-                
-        testProfile.appendSale(new Sale(
-                TarkovTrader.username,
-                "SuperTrooper",
-                new Item(null, null, null, "KIBA 1 Key", 350000, TarkovTrader.ign, TarkovTrader.username, "MST", null, null),
-                SaleType.BOUGHT,
-                SaleStatus.BUYER_CONFIRMED
-        ));
+        ProfileRequest profileRequest = new ProfileRequest(TarkovTrader.username);
         
-        ProfileDisplay profiler = new ProfileDisplay(worker, testProfile);
+        worker.sendForm(profileRequest);
+    }
+    
+    
+    public void displayProfile(Profile profile, boolean allowEdit)
+    {       
+        profiler = new ProfileDisplay(this, profile, allowEdit);
     }
     
     
     private void loadResources()
     {
-        // In the main UI, the only resource to be loaded so far is the avatar (unique to each account)
-        // All other resources are generic and can be loaded at launch in the Resources class 'load' method
+        outlineLogo = new Image(this.getClass().getResourceAsStream("/tarkovtraderlogooutline.png"), 362, 116, true, true);
+        outlineLogoViewer = new ImageView(outlineLogo);
         
         if (TarkovTrader.userImageFile != null)
         {
             try {
-                // TESTING HERE
-                //avatar = new Image(TarkovTrader.userImageFile.toURI().toString());
                 avatar = new Image(new FileInputStream(TarkovTrader.userImageFile));
             } catch (FileNotFoundException ex) {
                 Platform.runLater(() -> Alert.display(null, "Failed load avatar image."));
@@ -377,6 +358,11 @@ public class TarkovTrader extends Application {
         return this.messenger;
     }
     
+    
+    public LoadingAnimator getLoadingPrompt()
+    {
+        return this.loadingPrompt;
+    }
     
     public NotificationManager getNotificationManager()
     {

@@ -20,6 +20,7 @@ import tarkov.trader.objects.ItemModificationRequest;
 import tarkov.trader.objects.Message;
 import tarkov.trader.objects.Notification;
 import tarkov.trader.objects.Profile;
+import tarkov.trader.objects.ProfileRequest;
 
 
 public class RequestWorker implements Runnable {
@@ -57,22 +58,25 @@ public class RequestWorker implements Runnable {
         communicator = new ClientCommunicator(clientComm);
         dbWorker = new DatabaseWorker(clientIp, communicator, this);
         
-        try
+        try {
+        openStreams(); } catch (IOException e) { System.out.println("Request Worker: Failed to open streams for new client connection " + clientIp + "."); return; }
+        
+        while (true) 
         {
-            openStreams();
-            while (true)
+            try
             {
                 waitForRequests();
             }
-        }
-        catch (IOException e)
-        {
-            disconnect();
-        }
-        catch (ClassNotFoundException e)
-        {
-            System.out.println("Request Worker: Failed to create form. " + e.getMessage());
-            communicator.sendAlert("Request Worker: Failed to create form.");
+            catch (IOException e)
+            {
+                disconnect();
+                break;
+            }
+            catch (ClassNotFoundException e)
+            {
+                System.out.println("Request Worker: Failed to create form. " + e.getMessage());
+                communicator.sendAlert("Request Worker: Failed to create form.");
+            }
         }
     }
     
@@ -224,6 +228,19 @@ public class RequestWorker implements Runnable {
                 break;
                 
                 
+            case "profile":
+                ProfileRequest profileRequest = (ProfileRequest)form;
+                
+                if (authenticateRequest())
+                {
+                    processProfileRequest(profileRequest);
+                }
+                else
+                    sendAuthenticationFailure();
+                
+                break;
+                
+                
             case "heartbeat":
                 System.out.println(" - " + clientUsername + " is alive.");
                 
@@ -333,7 +350,7 @@ public class RequestWorker implements Runnable {
         // Build a profile with the unique username, IGN, and set their timezone
         Profile profile = new Profile(newAccountInfo.getUsername(), newAccountInfo.getIgn(), newAccountInfo.getTimezone());
         
-        // The account is new, so we'll mark a flag to warn that the account is under 2 weeks old, and has not yet completed any sales
+        // The account is new, so we'll mark a flag to warn that the account is under 2 weeks old, and has not yet completed any sales/purchases
         profile.appendFlag(AccountFlag.NEW_ACCOUNT);
         profile.appendFlag(AccountFlag.NO_COMPLETED_PURCHASES);
         profile.appendFlag(AccountFlag.NO_COMPLETED_SALES);
@@ -851,13 +868,25 @@ public class RequestWorker implements Runnable {
         return notificationsList;
     }
     
-    
+   
     
     /*
-    // Item Modification Section
+    // PROFILES
     */
     
-    // END Modification Section
+    private void processProfileRequest(ProfileRequest request)
+    {
+        Profile matchingProfile = dbWorker.getProfile(request.getUsername());
+        
+        if (matchingProfile == null)
+            return;
+        
+        request.setProfile(matchingProfile);
+        
+        this.sendForm(request);
+    }
+    
+    // END Profiles
     
     
     

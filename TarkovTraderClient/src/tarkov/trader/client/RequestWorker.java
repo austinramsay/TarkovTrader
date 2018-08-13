@@ -17,6 +17,8 @@ import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.Message;
 import tarkov.trader.objects.Notification;
 import tarkov.trader.objects.ProcessedItem;
+import tarkov.trader.objects.Profile;
+import tarkov.trader.objects.ProfileRequest;
 import tarkov.trader.objects.SyncForm;
 
 
@@ -162,7 +164,9 @@ public class RequestWorker implements Runnable
                 // Convert the 'Item's to 'ProcessedItem's and get an arraylist of ProcessedItems to send to browser
                 
                 if (itemlistform.getModeratorState())  // The requested item list was for the Moderator, populate the Moderator
+                {
                     Platform.runLater(() -> trader.getModerator().populate(getProcessedItemList(itemlistform)));
+                }
                 else                                   // The requested item list was for the Browser, populate the Browser
                     Platform.runLater(() -> trader.getBrowser().populate(getProcessedItemList(itemlistform)));
                 
@@ -172,57 +176,7 @@ public class RequestWorker implements Runnable
             case "chatlist":
                 // Client requested a chat list, results were returned from the server, and now we need to populate the messenger list
                 ChatListForm chatlistform = (ChatListForm)processedRequest;
-                
-                if (Messenger.isOpen)
-                {   
-                    FutureTask<Void> updateChatList = new FutureTask(() -> {
-                        // Get the open Messenger
-                        Messenger tempMessenger = trader.getMessenger();
-                        
-                        // If there is a chat selected, get the selected name of the chat to reselect after repopulating
-                        String currentChatName = null;
-                        if (tempMessenger.chatListView.getSelectionModel().getSelectedItem() != null)
-                            currentChatName = tempMessenger.chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username);
-                        
-                        // Set the chat list for the messenger
-                        tempMessenger.populate(chatlistform.getChatList());
-                        
-                        // If we got a name to select, find in the list and select again
-                        if (currentChatName != null)
-                        {
-                            for (Chat openChat : tempMessenger.chatListView.getItems())
-                            {
-                                if (openChat.getName(TarkovTrader.username).equals(currentChatName))
-                                {
-                                    tempMessenger.chatListView.getSelectionModel().select(openChat);
-                                    break;
-                                }
-                            }
-                        }
-                    }, null);
-                    
-                    // Run the task on the JavaFX application thread
-                    Platform.runLater(updateChatList);  // RequestWorker needs access to the JavaFX application thread
-                    
-                    // Wait for task to complete, handle possible exceptions, and set syncInProgess to false
-                    try { 
-                        updateChatList.get();           // Wait until the ListView has been populated before setting 'syncInProgress' to false again
-                    }
-                    catch (InterruptedException | ExecutionException e) { 
-                        Platform.runLater(() -> Alert.display(null, "Sync failed."));
-                        e.printStackTrace();
-                    }
-                    finally {
-                        // Sync complete
-                        TarkovTrader.syncInProgress.compareAndSet(true, false);
-                    }
-                }
-                
-                else
-                {
-                    // Sync complete
-                    TarkovTrader.syncInProgress.compareAndSet(true, false);
-                }                
+                populateMessenger(chatlistform);
                 
                 break;
                 
@@ -237,6 +191,13 @@ public class RequestWorker implements Runnable
             case "sync":
                 SyncForm syncinfo = (SyncForm)processedRequest;
                 processSync(syncinfo);
+                
+                break;
+                
+                
+            case "profile":
+                ProfileRequest profileRequest = (ProfileRequest)processedRequest;
+                processProfile(profileRequest);
                 
                 break;
                 
@@ -263,6 +224,11 @@ public class RequestWorker implements Runnable
                 Platform.runLater(() -> Alert.display(null, "Received an unknown type of form: " + processedRequest.getType() + "..."));
                 break;
         }
+        
+        if (trader.getLoadingPrompt().isRunning())
+        {
+            Platform.runLater(() -> { trader.getLoadingPrompt().close(); } );
+        }
     }
     
     
@@ -280,6 +246,61 @@ public class RequestWorker implements Runnable
         }
         
         return processedItemList;
+    }
+    
+    
+    private void populateMessenger(ChatListForm chatlistform)
+    {
+        if (Messenger.isOpen)
+        {   
+            FutureTask<Void> updateChatList = new FutureTask(() -> {
+                // Get the open Messenger
+                Messenger tempMessenger = trader.getMessenger();
+                   
+                // If there is a chat selected, get the selected name of the chat to reselect after repopulating
+                String currentChatName = null;
+            
+                if (tempMessenger.chatListView.getSelectionModel().getSelectedItem() != null)
+                    currentChatName = tempMessenger.chatListView.getSelectionModel().getSelectedItem().getName(TarkovTrader.username);
+                       
+                // Set the chat list for the messenger
+                tempMessenger.populate(chatlistform.getChatList());
+                        
+                // If we got a name to select, find in the list and select again
+                if (currentChatName != null)
+                {
+                    for (Chat openChat : tempMessenger.chatListView.getItems())
+                    {
+                        if (openChat.getName(TarkovTrader.username).equals(currentChatName))
+                        {
+                            tempMessenger.chatListView.getSelectionModel().select(openChat);
+                            break;
+                        }
+                    }
+                }
+            }, null);
+                    
+            // Run the task on the JavaFX application thread
+            Platform.runLater(updateChatList);  // RequestWorker needs access to the JavaFX application thread
+                   
+            // Wait for task to complete, handle possible exceptions, and set syncInProgess to false
+            try { 
+                updateChatList.get();           // Wait until the ListView has been populated before setting 'syncInProgress' to false again
+            }
+            catch (InterruptedException | ExecutionException e) { 
+                Platform.runLater(() -> Alert.display(null, "Sync failed."));
+                e.printStackTrace();
+            }
+            finally {
+                // Sync complete
+                TarkovTrader.syncInProgress.compareAndSet(true, false);
+            }
+        }        
+        else
+        {
+            // Sync complete
+            TarkovTrader.syncInProgress.compareAndSet(true, false);
+        }                  
     }
     
     
@@ -311,6 +332,16 @@ public class RequestWorker implements Runnable
     }
     
     
+    private void processProfile(ProfileRequest profileRequest)
+    {   
+        final Profile matchingProfile = profileRequest.getReturnedProfile();
+        
+        final boolean allowEdit = matchingProfile.getUsername().equals(TarkovTrader.username);   // Add fields to edit profile if this matches user's username
+        
+        Platform.runLater(() -> trader.displayProfile(matchingProfile, allowEdit));
+    }
+    
+    
     public void closeNetwork()
     {
         try 
@@ -328,12 +359,3 @@ public class RequestWorker implements Runnable
         }
     }
 }
-
-
-
-/*
-                        Messenger tempMessenger = trader.getMessenger();
-                        int currentIndex = tempMessenger.chatListView.getSelectionModel().getSelectedIndex();
-                        tempMessenger.populate(chatlistform.getChatList());
-                        tempMessenger.chatListView.getSelectionModel().select(currentIndex);
-*/

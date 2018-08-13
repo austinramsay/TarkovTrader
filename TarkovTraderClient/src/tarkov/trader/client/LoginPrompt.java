@@ -23,6 +23,7 @@ public class LoginPrompt {
     
     private TarkovTrader tarkovtrader;
     private RequestWorker worker;
+    private Resources resourceLoader;
     
     public static volatile boolean acknowledged;
     public Stage loginStage;
@@ -35,10 +36,12 @@ public class LoginPrompt {
     public Button newAccountButton;
     
     
-    public LoginPrompt(TarkovTrader tarkovtrader, RequestWorker worker)
+    public LoginPrompt(TarkovTrader tarkovtrader)
     {
         this.tarkovtrader = tarkovtrader;
-        this.worker = worker;
+        this.worker = tarkovtrader.getWorker();
+        this.resourceLoader = new Resources();
+        resourceLoader.load();
     }
     
     
@@ -68,7 +71,7 @@ public class LoginPrompt {
         // upperdisplay houses Tarkov Trader logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);
-        upperDisplay.getChildren().add(Resources.logoViewer);
+        upperDisplay.getChildren().add(resourceLoader.getLogo());
         
         
         // Grid construction for labels and input fields
@@ -101,7 +104,7 @@ public class LoginPrompt {
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         loginStage.setOnCloseRequest(e -> this.close());
         loginStage.setTitle("Tarkov Trader Login");
-        loginStage.getIcons().add(Resources.icon);
+        loginStage.getIcons().add(resourceLoader.getIcon());
         loginStage.setResizable(false);
         loginStage.setScene(scene);
         loginStage.show();

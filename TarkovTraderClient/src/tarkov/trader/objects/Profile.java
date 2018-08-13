@@ -1,6 +1,7 @@
 
 package tarkov.trader.objects;
 
+import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -12,7 +13,7 @@ import java.util.Date;
  * @author austin
  */
 
-public class Profile {
+public class Profile implements Serializable {
     
     // Need confirmed/completed sales
     // Need reported sales
@@ -22,7 +23,8 @@ public class Profile {
     private String ign;
     private String timezone;
     private String registrationDate;
-    private ArrayList<Sale> sales;
+    private ArrayList<Sale> completedSales;
+    private ArrayList<Item> currentSales;
     private ArrayList<AccountFlag> accountFlags;
     private int repPoints;
     
@@ -32,7 +34,8 @@ public class Profile {
         this.ign = ign;
         this.timezone = timezone;
         this.repPoints = 0;
-        this.sales = new ArrayList<>();
+        this.completedSales = new ArrayList<>();
+        this.currentSales = new ArrayList<>();
         this.accountFlags = new ArrayList<>();
         setDate();
     }
@@ -52,12 +55,17 @@ public class Profile {
         return timezone;
     }
     
-    public ArrayList<Sale> getSales()
+    public ArrayList<Sale> getCompletedSales()
     {
-        return sales;
+        return completedSales;
     }
     
-    public ArrayList<AccountFlag> getFlags()
+    public ArrayList<Item> getCurrentSales()
+    {
+        return currentSales;
+    }
+    
+    public ArrayList<AccountFlag> getAccountFlags()
     {
         return accountFlags;
     }
@@ -82,9 +90,9 @@ public class Profile {
     
     public void appendSale(Sale sale)
     {
-        if (!sales.contains(sale))
+        if (!completedSales.contains(sale))
         {
-            sales.add(sale);
+            completedSales.add(sale);
             resolvePoints();
         }
         else
@@ -93,13 +101,29 @@ public class Profile {
     
     public void removeSale(Sale sale)
     {
-        if (sales.contains(sale))
+        if (completedSales.contains(sale))
         {
-            sales.remove(sale);
+            completedSales.remove(sale);
             resolvePoints();
         }
         else
             System.out.println("Profile: Sale does not exist for profile " + username + ".");
+    }
+    
+    public void appendItem(Item item)
+    {
+        if (!currentSales.contains(item))
+            currentSales.add(item);
+        else
+            System.out.println("Profile: Item already exists in current sales for " + username + ".");
+    }
+    
+    public void removeItem(Item item)
+    {
+        if (currentSales.contains(item))
+            currentSales.remove(item);
+        else
+            System.out.println("Profile: Item does not exist for profile " + username + ".");
     }
     
     public void appendFlag(AccountFlag flag)
@@ -169,7 +193,7 @@ public class Profile {
             }
         }
         
-        for (Sale completedSale : sales)
+        for (Sale completedSale : completedSales)
         {
             switch (completedSale.getSaleStatus())
             {

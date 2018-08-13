@@ -29,6 +29,7 @@ public class NewAccountStage
 {
     private RequestWorker worker;
     private LoginPrompt login;
+    private Resources resourceLoader;
     
     private Stage newAccountStage;
     private Scene scene;
@@ -63,6 +64,8 @@ public class NewAccountStage
     {
         this.login = login;
         this.worker = worker;
+        this.resourceLoader = new Resources();
+        this.resourceLoader.load();
     }
     
     
@@ -140,7 +143,7 @@ public class NewAccountStage
         // Displays logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);
-        upperDisplay.getChildren().add(Resources.logoViewer);
+        upperDisplay.getChildren().add(resourceLoader.getLogo());
         
         
         // Displays inputs
@@ -183,7 +186,7 @@ public class NewAccountStage
         
         scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
-        newAccountStage.getIcons().add(Resources.icon);
+        newAccountStage.getIcons().add(resourceLoader.getIcon());
         newAccountStage.setScene(scene);
         newAccountStage.setResizable(false);
         newAccountStage.show();

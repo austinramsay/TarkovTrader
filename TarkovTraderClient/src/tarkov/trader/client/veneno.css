@@ -139,7 +139,7 @@
     -fx-underline: true;
 }
 
-.table-view, .table-view .column-header, .table-view .filler {
+.table-view, .table-view .column-header, .table-view .filler, .table-view .corner {
     -fx-background-color: transparent;
 }
 
@@ -189,18 +189,17 @@
     -fx-background-color: #424242;
 }
 
-.scroll-bar:vertical .track-background {
+.scroll-bar:vertical .track-background, .scroll-bar:horizontal .track-background {
     -fx-background-color: #424242;
 }
 
-.scroll-bar:vertical .track
-{
+.scroll-bar:vertical .track, .scroll-bar:horizontal .track {
     -fx-background-color: black;
     -fx-background-radius: 2em;
     -fx-border-radius: 2em;
 }
 
-.scroll-bar:vertical .thumb {
+.scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb {
     -fx-background-color: #383838;
     -fx-background-radius: 2em;
     -fx-background-insets: 2, 0, 0;

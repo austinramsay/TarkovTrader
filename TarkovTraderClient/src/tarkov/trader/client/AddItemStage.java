@@ -30,6 +30,7 @@ public class AddItemStage {
     
     private TarkovTrader trader;
     private RequestWorker worker;
+    private Resources resourceLoader;
     
     private Stage addItemStage;
     private Scene scene;
@@ -69,10 +70,12 @@ public class AddItemStage {
     private File itemImageFile;
     
     
-    public AddItemStage(TarkovTrader trader, RequestWorker worker)
+    public AddItemStage(TarkovTrader trader)
     {
         this.trader = trader;
-        this.worker = worker;
+        this.worker = trader.getWorker();
+        this.resourceLoader = new Resources();
+        resourceLoader.load();
     }
     
     
@@ -162,7 +165,7 @@ public class AddItemStage {
         // Upper display will house the logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);
-        upperDisplay.getChildren().add(Resources.logoViewer);
+        upperDisplay.getChildren().add(resourceLoader.getLogo());
         
         
         // Set positions for all objects
@@ -233,7 +236,7 @@ public class AddItemStage {
         scene = new Scene(border);
         scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
         addItemStage.setTitle("Create an Item Listing");
-        addItemStage.getIcons().add(Resources.icon);
+        addItemStage.getIcons().add(resourceLoader.getIcon());
         addItemStage.setOnCloseRequest(e -> close());
         addItemStage.setScene(scene);
         addItemStage.setResizable(false);
