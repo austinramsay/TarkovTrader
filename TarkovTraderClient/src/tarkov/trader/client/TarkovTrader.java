@@ -103,7 +103,6 @@ public class TarkovTrader extends Application {
         startNotificationManager();
         
         resourceLoader = new Resources();
-        resourceLoader.load();
         
         loadingPrompt = new LoadingAnimator();
         
@@ -184,7 +183,7 @@ public class TarkovTrader extends Application {
         
         
         // Set button graphics for main central display
-        searchButton.setGraphic(resourceLoader.getsearchIcon());
+        searchButton.setGraphic(resourceLoader.getSearchIcon());
         searchButton.getStyleClass().add("centralDisplayButton");
         
         browseButton.setGraphic(resourceLoader.getBrowserIcon());
@@ -293,6 +292,7 @@ public class TarkovTrader extends Application {
         loadingPrompt.display();
         
         ProfileRequest profileRequest = new ProfileRequest(TarkovTrader.username);
+        System.out.println(profileRequest.getUsername() + TarkovTrader.username);
         
         worker.sendForm(profileRequest);
     }

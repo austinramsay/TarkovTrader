@@ -224,9 +224,15 @@ public class ProcessedItem {
     }
     
     
-    public String getDealStatus()
+    public String getItemStatusDesc()
     {
-        return item.getDealStatus();
+        return item.getItemStatus().getReason();
+    }
+    
+    
+    public ItemStatus getItemStatus()
+    {
+        return item.getItemStatus();
     }
     
         
@@ -260,6 +266,12 @@ public class ProcessedItem {
             return "Yes";
         else
             return "No";
+    }
+    
+    
+    public String getRequestedUser()
+    {
+        return item.getRequestedUser();
     }
     
     

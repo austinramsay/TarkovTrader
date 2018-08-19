@@ -25,6 +25,8 @@ public class Profile implements Serializable {
     private String registrationDate;
     private ArrayList<Sale> completedSales;
     private ArrayList<Item> currentSales;
+    private ArrayList<Item> buyList;
+    private ArrayList<Item> requestedSales;
     private ArrayList<AccountFlag> accountFlags;
     private int repPoints;
     
@@ -36,6 +38,8 @@ public class Profile implements Serializable {
         this.repPoints = 0;
         this.completedSales = new ArrayList<>();
         this.currentSales = new ArrayList<>();
+        this.buyList = new ArrayList<>();
+        this.requestedSales = new ArrayList<>();
         this.accountFlags = new ArrayList<>();
         setDate();
     }
@@ -65,6 +69,16 @@ public class Profile implements Serializable {
         return currentSales;
     }
     
+    public ArrayList<Item> getBuyList()
+    {
+        return buyList;
+    }
+    
+    public ArrayList<Item> getRequestedSales()
+    {
+        return requestedSales;
+    }
+    
     public ArrayList<AccountFlag> getAccountFlags()
     {
         return accountFlags;
@@ -84,7 +98,7 @@ public class Profile implements Serializable {
     // Modifiers:
     private void setDate()
     {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+        DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
         this.registrationDate = dateFormat.format(new Date());
     }
     
@@ -110,6 +124,31 @@ public class Profile implements Serializable {
             System.out.println("Profile: Sale does not exist for profile " + username + ".");
     }
     
+    public void setItemList(ArrayList<Item> itemList)
+    {
+        this.currentSales = itemList;
+    }
+    
+    public void setBuyList(ArrayList<Item> buyList)
+    {
+        this.buyList = buyList;
+    }
+    
+    public void setRequestedSalesList(ArrayList<Item> requestedSales)
+    {
+        this.requestedSales = requestedSales;
+    }
+    
+    public void setCompletedSalesList(ArrayList<Sale> completedSales)
+    {
+        this.completedSales = completedSales;
+    }
+    
+    public void setCurrentSalesList(ArrayList<Item> currentSales)
+    {
+        this.currentSales = currentSales;
+    }
+    
     public void appendItem(Item item)
     {
         if (!currentSales.contains(item))
@@ -124,6 +163,38 @@ public class Profile implements Serializable {
             currentSales.remove(item);
         else
             System.out.println("Profile: Item does not exist for profile " + username + ".");
+    }
+    
+    public void appendBuyItem(Item item)
+    {
+        if (!buyList.contains(item))
+            buyList.add(item);
+        else
+            System.out.println("Profile: Item already exists for profile " + username + ".");
+    }
+    
+    public void removeBuyItem(Item item)
+    {
+        if (buyList.contains(item))
+            buyList.remove(item);
+        else
+            System.out.println("Profile: Item does not exist for profile " + username + ".");
+    }
+    
+    public void appendRequestedSale(Item item)
+    {
+        if (!requestedSales.contains(item))
+            requestedSales.add(item);
+        else 
+            System.out.println("Profile: Requested sale already exists for profile " + username + ".");
+    }
+    
+    public void removeRequestedSale(Item item)
+    {
+        if (requestedSales.contains(item))
+            requestedSales.remove(item);
+        else
+            System.out.println("Profile: Requested sale does not exist for profile " + username + ".");
     }
     
     public void appendFlag(AccountFlag flag)
@@ -205,8 +276,16 @@ public class Profile implements Serializable {
                     repPoints += 10;
                     break;
                     
-                case FAILED:
+                case MOD_REMOVED:
                     repPoints -= 30;
+                    break;
+                    
+                case BUYER_FAILED:
+                    repPoints -= 10;
+                    break;
+                    
+                case SELLER_FAILED:
+                    repPoints -= 10;
                     break;
                 
                 default:

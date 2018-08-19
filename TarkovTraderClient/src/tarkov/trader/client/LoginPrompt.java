@@ -41,7 +41,6 @@ public class LoginPrompt {
         this.tarkovtrader = tarkovtrader;
         this.worker = tarkovtrader.getWorker();
         this.resourceLoader = new Resources();
-        resourceLoader.load();
     }
     
     

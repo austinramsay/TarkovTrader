@@ -10,8 +10,9 @@ public enum SaleStatus {
     
     BUYER_CONFIRMED("+Rep as Buyer"),
     SELLER_CONFIRMED("+Rep as Seller"),
-    UNCONFIRMED("Awaiting response"),
-    FAILED("Removed By Mod -Rep"),
+    MOD_REMOVED("Removed By Mod -Rep"),
+    SELLER_FAILED("Seller Failed to Complete -Rep"),
+    BUYER_FAILED("Buyer Failed to Complete -Rep"),
     PURCHASE_SCAM("Scammed Purchase -Rep"),
     SELL_SCAM("Scammed Sale -Rep");
     

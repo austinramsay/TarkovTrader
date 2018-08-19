@@ -89,7 +89,6 @@ public class ProfileDisplay {
         this.profile = profile;
         this.allowEdit = allowEdit;
         this.resourceLoader = new Resources();
-        this.resourceLoader.load();
 
         display();
     }

@@ -1,7 +1,6 @@
 
 package tarkov.trader.client;
 
-import java.util.Timer;
 import javafx.animation.Interpolator;
 import javafx.animation.RotateTransition;
 import javafx.geometry.Insets;
@@ -42,7 +41,7 @@ public class LoadingAnimator {
         
         info = new Label("Awaiting Server Response...");
         
-        root = new HBox();
+        root = new HBox(10);
         root.setPadding(new Insets(10));
         root.setAlignment(Pos.CENTER);
         
@@ -58,7 +57,6 @@ public class LoadingAnimator {
     public void display()
     {
         running = true;
-        Timer timer = new Timer();
         
         rotate.play();
         

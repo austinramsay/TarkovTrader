@@ -14,13 +14,19 @@ import tarkov.trader.objects.ChatListForm;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.Form;
 import tarkov.trader.objects.Item;
+import tarkov.trader.objects.ItemAction;
 import tarkov.trader.objects.ItemForm;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.ItemModificationRequest;
+import tarkov.trader.objects.ItemStatus;
+import tarkov.trader.objects.ItemStatusModRequest;
 import tarkov.trader.objects.Message;
 import tarkov.trader.objects.Notification;
 import tarkov.trader.objects.Profile;
 import tarkov.trader.objects.ProfileRequest;
+import tarkov.trader.objects.Sale;
+import tarkov.trader.objects.SaleStatus;
+import tarkov.trader.objects.SaleType;
 
 
 public class RequestWorker implements Runnable {
@@ -36,8 +42,11 @@ public class RequestWorker implements Runnable {
     private ObjectOutputStream outputStream;
     private Form form;
     
-    private HashMap<String, Chat> chatmap;  // This will be pulled from DB upon authenticated login and when it needs to sync upon receiving new chat
+    private HashMap<String, String> clientInfo;               // Information pulled upon successful login
+    private HashMap<String, Chat> chatmap;                    // This will be pulled from DB upon authenticated login and when it needs to sync upon receiving new chat
     private HashMap<String, ArrayList<String>> messageCache;  // The cache will be pushed to database upon disconnection   (Username, Message)
+    
+    private Profile currentProfile;
     
     private final String PRICE_MIN = "0";
     private final String PRICE_MAX = "50000000";
@@ -59,7 +68,7 @@ public class RequestWorker implements Runnable {
         dbWorker = new DatabaseWorker(clientIp, communicator, this);
         
         try {
-        openStreams(); } catch (IOException e) { System.out.println("Request Worker: Failed to open streams for new client connection " + clientIp + "."); return; }
+        openStreams(); } catch (IOException e) { TarkovTraderServer.broadcast("Request Worker: Failed to open streams for new client connection " + clientIp + "."); return; }
         
         while (true) 
         {
@@ -74,7 +83,7 @@ public class RequestWorker implements Runnable {
             }
             catch (ClassNotFoundException e)
             {
-                System.out.println("Request Worker: Failed to create form. " + e.getMessage());
+                TarkovTraderServer.broadcast("Request Worker: Failed to create form. " + e.getMessage());
                 communicator.sendAlert("Request Worker: Failed to create form.");
             }
         }
@@ -167,9 +176,13 @@ public class RequestWorker implements Runnable {
                     // Handle the item modification
                     dbWorker.processItemModification(itemModRequest, clientUsername);
                     
-                    // Send the updated list back after modification using the current clients set filters
-                    ItemListForm moderatorListForm = new ItemListForm(itemModRequest.getFilterFlags(), true);
-                    dbWorker.processItemListRequest(moderatorListForm);
+                    // Force moderator sync by sending updated profile with a 'moderator' flag
+                    ProfileRequest modProfile = new ProfileRequest(clientUsername);
+                    modProfile.setProfile(currentProfile);
+                    ArrayList<String> flags = new ArrayList<>();
+                    flags.add("moderator");
+                    modProfile.setFlags(flags);
+                    sendForm(modProfile);
                 }
                 else
                     sendAuthenticationFailure();
@@ -241,14 +254,27 @@ public class RequestWorker implements Runnable {
                 break;
                 
                 
+            case "itemstatusmod":
+                ItemStatusModRequest statusModRequest = (ItemStatusModRequest)form;
+                
+                if (authenticateRequest())
+                {
+                    processStatusModRequest(statusModRequest);
+                }
+                else
+                    sendAuthenticationFailure();
+                
+                break;
+                
+
             case "heartbeat":
-                System.out.println(" - " + clientUsername + " is alive.");
+                TarkovTraderServer.broadcast(" - " + clientUsername + " is alive.");
                 
                 break;
                 
                 
             default:
-                System.out.println("Received a request from " + clientIp + " but couldn't interpret the type.");
+                TarkovTraderServer.broadcast("Received a request from " + clientIp + " but couldn't interpret the type.");
                 break;
                 
         }
@@ -258,7 +284,7 @@ public class RequestWorker implements Runnable {
     private void sendAuthenticationFailure()
     {
         communicator.sendAlert("Failed to authenticate request.");
-        System.out.println("Request: Failed to authenticate request for " + clientIp + ".");
+        TarkovTraderServer.broadcast("Request: Failed to authenticate request for " + clientIp + ".");
     }
     
     
@@ -310,7 +336,7 @@ public class RequestWorker implements Runnable {
             // User has more than 1 account associated with their IP address
             // TODO: SET FLAG FOR POTENTIAL FRAUD ACCOUNT
             communicator.sendAlert("Failed to verify user info. Please contact: tarkovtrader@gmail.com");
-            System.out.println("Request: Client " + clientIp + " attempted to register multiple accounts.");
+            TarkovTraderServer.broadcast("Request: Client " + clientIp + " attempted to register multiple accounts.");
             notified = true;
             return false;
         }
@@ -318,7 +344,7 @@ public class RequestWorker implements Runnable {
         if(!notified && (verified == 2))
         {
             communicator.sendAlert("Username is already in use. Enter a different username.");
-            System.out.println("Request: Client " + clientIp + " attempted to register duplicate username.");
+            TarkovTraderServer.broadcast("Request: Client " + clientIp + " attempted to register duplicate username.");
             notified = true;
             return false;
         }
@@ -326,7 +352,7 @@ public class RequestWorker implements Runnable {
         if(!notified && (verified == 3))
         {
             communicator.sendAlert("An account is already associated with this in-game name. Contact tarkovtrader@gmail.com if you do not already have an account.");
-            System.out.println("Request: Client " + clientIp + " attempted to register an account containing a duplicate IGN.");
+            TarkovTraderServer.broadcast("Request: Client " + clientIp + " attempted to register an account containing a duplicate IGN.");
             notified = true;
             return false;
         }
@@ -377,7 +403,7 @@ public class RequestWorker implements Runnable {
             
             if (sendForm(login))
             {
-                System.out.println("Request: Multiple logins for: " + login.getUsername() + ". Current assigned IP is: " + TarkovTraderServer.authenticatedUsers.get(login.getUsername()).clientIp + ". Attempted IP: " + clientIp);
+                TarkovTraderServer.broadcast("Request: Multiple logins for: " + login.getUsername() + ". Current assigned IP is: " + TarkovTraderServer.authenticatedUsers.get(login.getUsername()).clientIp + ". Attempted IP: " + clientIp);
                 communicator.sendAlert("This username is already signed in.");
                 return false;
             }
@@ -388,7 +414,8 @@ public class RequestWorker implements Runnable {
         {
             // Upon client authentication, send all necessary information needed by client features through the login form to be unpacked by client request worker
             
-            HashMap<String, String> clientInfo = dbWorker.getAuthenticatedClientInfo(login);
+            clientUsername = login.getUsername();
+            clientInfo = dbWorker.getAuthenticatedClientInfo(login);
             File userImageFile = dbWorker.getUserImageFile(login.getUsername());
             ArrayList<Notification> notifications = dbWorker.getNotifications(login.getUsername());
             ArrayList<String> userList = TarkovTraderServer.getUserList();
@@ -401,15 +428,22 @@ public class RequestWorker implements Runnable {
             login.setNotificationsList(notifications);
             login.setUserList(userList);
             login.setOnlineList(onlineList);
-                    
+            
             if (sendForm(login)) 
             {
                 TarkovTraderServer.authenticatedUsers.put(login.getUsername(), this);
-                this.clientUsername = login.getUsername();
-                System.out.println("Request: Successful user authentication for: " + clientIp);
+                TarkovTraderServer.broadcast("Request: Successful user authentication for: " + clientUsername + " at " + clientIp + ".");
                 
                 // Pull client chats from the DB
                 chatmap = dbWorker.pullChatMap(login.getUsername());   // Will never need to initialize because this is stored upon account creation
+                currentProfile = dbWorker.getProfile(clientUsername);
+                
+                if (currentProfile == null)
+                {
+                    // The client may have a different profile version than the latest server version, just create a new one and update it in the DB
+                    resolveBrokenProfile();
+                }
+                
                 messageCache = new HashMap<>();
                 
                 dbWorker.clearNotifications(login.getUsername());
@@ -425,7 +459,7 @@ public class RequestWorker implements Runnable {
             
             if (sendForm(login))
             {
-                System.out.println("Request: Failed user authentication for: " + clientIp);
+                TarkovTraderServer.broadcast("Request: Failed user authentication for: " + clientIp);
                 communicator.sendAlert("Check credentials. Credentials are case-sensitive.");
                 return false;
             }
@@ -459,21 +493,21 @@ public class RequestWorker implements Runnable {
     
     
     /*
-    // The next method processes a new item submission by extracting the Item object from the generic NewItemForm
-    // And uses the database worker to insert into the 'items' table
+    // NEW ITEM SUBMISSION HANDLING
+    // Uses the database worker to insert into the 'items' table AND update the user's profile
     */
     
     private void processNewItemRequest(ItemForm newitemform)
     {
         Item newItem = newitemform.getItem();
         
-        if(dbWorker.insertNewItem(newItem))
+        if(dbWorker.insertNewItem(newItem) && appendCurrentSale(newItem))   // Append current sale method in PROFILES section in this class
         {
             communicator.sendAlert("New item successfully created.");
-            System.out.println("New item successfully added for " + clientIp + ".");
+            TarkovTraderServer.broadcast("New item successfully added for " + clientIp + ".");
         }
     }
-   
+
     
     
     /*
@@ -539,7 +573,7 @@ public class RequestWorker implements Runnable {
             // Send notifications to destination's DB or through their worker depending if they are online/offline. This method will handle client state automatically
             sendChatNotification(destination, clientUsername);
             
-            System.out.println("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
+            TarkovTraderServer.broadcast("Request: New chat processed from " + chat.getOrigin() + " to " + destination + ".");
         }
         
         return true;
@@ -559,7 +593,7 @@ public class RequestWorker implements Runnable {
             chatMessages = chat.getMessages();
         else
         {
-            System.out.println("Request: Failed to convert chat to message from " + origin + " to " + destination + ".");
+            TarkovTraderServer.broadcast("Request: Failed to convert chat to message from " + origin + " to " + destination + ".");
             return false;
         }
         
@@ -571,7 +605,7 @@ public class RequestWorker implements Runnable {
         
         processMessage(convertedMessage, false);    // We want to process this as a normal message for the other client, and we DO NOT want to cache this message (it will cause a doubled message for this client)
         
-        System.out.println("Request: New chat processed for " + chat.getOrigin() + ".. converted to message for " + chat.getDestination() + ".");
+        TarkovTraderServer.broadcast("Request: New chat processed for " + chat.getOrigin() + ".. converted to message for " + chat.getDestination() + ".");
         
         return true;
     }
@@ -673,13 +707,13 @@ public class RequestWorker implements Runnable {
             
             // Verbose logging
             communicator.sendAlert("Chat with " + username + " successfully deleted.");
-            System.out.println("Request: Chat '" + username + "' successfully deleted for '" + clientUsername + "'.");
+            TarkovTraderServer.broadcast("Request: Chat '" + username + "' successfully deleted for '" + clientUsername + "'.");
         }
         else
         {
             // For extra protection, should never really occur 
             communicator.sendAlert("Chat could not be deleted.");
-            System.out.println("Request: Chat '" + username + "' failed to delete for '" + clientUsername + "'.");
+            TarkovTraderServer.broadcast("Request: Chat '" + username + "' failed to delete for '" + clientUsername + "'.");
         }
     }
     
@@ -739,12 +773,12 @@ public class RequestWorker implements Runnable {
         
         if (messageCache.isEmpty())
         {
-            System.out.println("Client " + clientIp + " message cache empty. Skipping sync.");
+            TarkovTraderServer.broadcast("Client " + clientIp + " message cache empty. Skipping sync.");
             return false;
         }
         
                 
-        System.out.println("Syncing cached messages for " + clientIp + "...");
+        TarkovTraderServer.broadcast("Syncing cached messages for " + clientIp + "...");
         int counter = 0;
         
         // Need to push this sessions messages into the corresponding chat in the chatmap
@@ -776,11 +810,12 @@ public class RequestWorker implements Runnable {
         
         messageCache.clear();
         
-        System.out.println("Sync complete... " + counter + " messages pushed.");
+        TarkovTraderServer.broadcast("Sync complete... " + counter + " messages pushed.");
         
         return true;
     }
    
+    
  
     
     /* 
@@ -825,8 +860,57 @@ public class RequestWorker implements Runnable {
         }
         else 
         {
+            // User is offline, push to DB
             ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
             dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "message", displayOnNotify));               
+        }
+    }
+    
+    
+    private void sendReputationUpdateNotification(String sendNotificationTo, String displayOnNotify)
+    {
+        if (sendNotificationTo.equals(clientUsername))
+        {
+            // Send our client this notification
+            Notification repUpdateNotification = new Notification("repupdate", null);  // Nothing to display on notifying
+            sendForm(repUpdateNotification);
+        }
+        else
+        {
+            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
+            dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "repupdate", null));
+        }
+    }
+    
+    
+    private void sendNewSaleRequestNotification(String sendNotificationTo, String displayOnNotify)
+    {
+        if (sendNotificationTo.equals(clientUsername))
+        {
+            // Send our client this notification
+            Notification newSaleRequestNotification = new Notification("newsalerequest", displayOnNotify);
+            sendForm(newSaleRequestNotification);
+        }
+        else
+        {
+            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
+            dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "newsalerequest", displayOnNotify));
+        }
+    }
+    
+    
+    private void sendSaleRequestUpdateNotification(String sendNotificationTo, String displayOnNotify)
+    {
+        if (sendNotificationTo.equals(clientUsername))
+        {
+            // Send our client this notification
+            Notification saleRequestUpdateNotification = new Notification("salerequestupdate", displayOnNotify);
+            sendForm(saleRequestUpdateNotification);
+        }
+        else
+        {
+            ArrayList<Notification> destinationNotifications = dbWorker.getNotifications(sendNotificationTo);
+            dbWorker.insertNotifications(sendNotificationTo, addNotification(destinationNotifications, "salerequestupdate", displayOnNotify));
         }
     }
 
@@ -834,7 +918,7 @@ public class RequestWorker implements Runnable {
     private ArrayList<Notification> addNotification(ArrayList<Notification> notificationsList, String notificationType, String displayOnNotify)
     {
         // We are using this method when creating a new notification to add to another user's list
-        // This method finds related notifications and modifies it
+        // This method finds related notifications and modifies it (For example, a user sends multiple messages - we can increase the message count rather than creating multiple notifications)
         // Or creates one if needed
         // Usually used when inserting back into another users DB 
         
@@ -842,7 +926,9 @@ public class RequestWorker implements Runnable {
         
         for (Notification notification : notificationsList)
         {
-            if (notification.getOriginUsername().equals(displayOnNotify) && notification.getNotificationType().equals(notificationType))
+            // Look through the current notification list
+            // If we find a notification that matches the username and type of notification, remove it first so we don't end up with multiples
+            if (notification.getOriginUsername() != null && notification.getOriginUsername().equals(displayOnNotify) && notification.getNotificationType().equals(notificationType))
             {
                 tempNotification = notification;
                 notificationsList.remove(notification);
@@ -850,12 +936,14 @@ public class RequestWorker implements Runnable {
             }
         }
         
+        // No matching notification found
         if (tempNotification == null)
         {
             // No existing notification found, create a new one
             tempNotification = new Notification(notificationType, displayOnNotify);
         }
         
+        // There was a matching notification found for a message from a user, increase the message count instead of creating duplicate
         if (notificationType.equals("message"))
         {
             int count = tempNotification.getCount();
@@ -863,6 +951,7 @@ public class RequestWorker implements Runnable {
             tempNotification.setCount(count);
         }
         
+        // Finally, add back into the arraylist to be returned
         notificationsList.add(tempNotification);
         
         return notificationsList;
@@ -874,6 +963,12 @@ public class RequestWorker implements Runnable {
     // PROFILES
     */
     
+    public void updateCurrentProfile(Profile updatedProfile)
+    {
+        this.currentProfile = updatedProfile;
+    }
+    
+    
     private void processProfileRequest(ProfileRequest request)
     {
         Profile matchingProfile = dbWorker.getProfile(request.getUsername());
@@ -883,10 +978,223 @@ public class RequestWorker implements Runnable {
         
         request.setProfile(matchingProfile);
         
-        this.sendForm(request);
+        if (sendForm(request))
+            TarkovTraderServer.broadcast("Request Worker: Profile request -- returned " + request.getUsername() + "'s profile to " + clientUsername + ".");
+    }
+    
+    
+    private void syncProfileWithModFlag()
+    {
+        ProfileRequest updatedProfile = new ProfileRequest(clientUsername);
+        updatedProfile.setProfile(currentProfile);
+        ArrayList<String> flags = new ArrayList<>();
+        flags.add("moderator");
+        updatedProfile.setFlags(flags);
+        sendForm(updatedProfile);        
+    }
+    
+    private boolean appendCurrentSale(Item newItem)
+    {
+        currentProfile.appendItem(newItem);
+        
+        return dbWorker.updateProfile(currentProfile, clientUsername);
+    }
+    
+    
+    private boolean appendBuyItem(Item newItem)
+    {
+        currentProfile.appendBuyItem(newItem);
+        
+        return dbWorker.updateProfile(currentProfile, clientUsername);
+    }
+    
+    
+    private boolean removeBuyItem(Item item)
+    {
+        currentProfile.removeBuyItem(item);
+        
+        return dbWorker.updateProfile(currentProfile, clientUsername);
+    }
+    
+    
+    private void resolveBrokenProfile()
+    {
+        TarkovTraderServer.broadcast("Request Worker: Resolving profile for " + clientUsername + ".");
+        
+        // Build a profile with the unique username, IGN, and set their timezone
+        Profile profile = new Profile(clientUsername, clientInfo.get("ign"), clientInfo.get("timezone"));
+        
+        // Append generic new account flags
+        profile.appendFlag(AccountFlag.NEW_ACCOUNT);
+        profile.appendFlag(AccountFlag.NO_COMPLETED_PURCHASES);
+        profile.appendFlag(AccountFlag.NO_COMPLETED_SALES);
+        
+        // The user may have items for sale, we need to include these in the profile
+        ArrayList<Item> itemList = dbWorker.getUserItems(clientUsername);
+        
+        // Set the list in the profile itself
+        profile.setItemList(itemList);
+        
+        // Send updated profile to database
+        dbWorker.updateProfile(profile, clientUsername);
     }
     
     // END Profiles
+    
+    
+    
+    /*
+    // Item Status Modifications / Buying - Selling
+    */
+    
+    private void processStatusModRequest(ItemStatusModRequest request)
+    {
+        Item item = request.getItem();
+        
+        if (request.getStatus() == null)
+        {
+            // We are just performing an action on the item, not changing the status
+        }
+        else if (item.getItemStatus() != request.getStatus())
+        {
+            item.setItemStatus(request.getStatus());
+        }
+        else
+        {
+            TarkovTraderServer.broadcast("Request Worker: Cannot change item status multiple times.");
+            communicator.sendAlert("This item's status has already been changed.");
+            return;
+        }
+        
+        if (request.getAction() == ItemAction.MOVE_TO_BUY_LIST)
+        {
+            // This client requested an add to buy list, the seller will need to know this username so we will set the requested user as 'this'
+            item.setRequestedUser(clientUsername);
+            
+            if (currentProfile.getBuyList().contains(item))
+            {
+                TarkovTraderServer.broadcast("Request Worker: Failed to add item to buy list for " + clientUsername + ". Already exists.");
+                communicator.sendAlert("Your buy list already contains this listing.");
+                return;
+            }
+            
+            if (appendBuyItem(item))
+            {
+                // Successfully added to our current profile
+                
+                // Add to requested sales of end user's profile
+                Profile endUserProfile = dbWorker.getProfile(item.getUsername());
+                endUserProfile.appendRequestedSale(item);
+                dbWorker.updateProfile(endUserProfile, item.getUsername());
+                sendNewSaleRequestNotification(item.getUsername(), clientUsername);
+                
+                TarkovTraderServer.broadcast("Request Worker: Added item to buy list for " + clientUsername + ".");
+                communicator.sendAlert("Added item to buy list. '" + item.getUsername() + "' was notified.");           
+                return;
+            }
+        }
+        
+        if (request.getAction() == ItemAction.MODIFY_STATUS)
+        {
+            // Status has been already modified at start of method
+            // We just need to process the new status accordingly
+            if (item.getItemStatus() == ItemStatus.CONFIRMED)
+            {
+                Sale newSale;
+                // The seller has confirmed the sale
+                newSale = new Sale(clientUsername, item.getRequestedUser(), item, SaleType.SOLD, SaleStatus.BUYER_CONFIRMED);
+                currentProfile.appendSale(newSale);
+                dbWorker.updateProfile(currentProfile, clientUsername);
+                
+                Profile endUserProfile = dbWorker.getProfile(item.getRequestedUser());
+                newSale = null;
+                newSale = new Sale(clientUsername, item.getRequestedUser(), item, SaleType.BOUGHT, SaleStatus.SELLER_CONFIRMED);
+                endUserProfile.appendSale(newSale);
+                dbWorker.updateProfile(endUserProfile, item.getRequestedUser());
+                sendSaleRequestUpdateNotification(item.getRequestedUser(), clientUsername);
+                
+                communicator.sendAlert("Accepted sale. '" + item.getRequestedUser() + "' was notified.");
+                TarkovTraderServer.broadcast("Request Worker: Seller '" + clientUsername + "' accepted sale with '" + item.getRequestedUser() + "'.");
+            }
+            else if (item.getItemStatus() == ItemStatus.DECLINED)
+            {
+                // The seller has denied the sale
+                for (Item matchingItem : currentProfile.getRequestedSales())
+                {
+                    if (matchingItem.equals(item))
+                    {
+                        matchingItem.setItemStatus(ItemStatus.DECLINED);
+                        break;
+                    }
+                }
+                dbWorker.updateProfile(currentProfile, clientUsername);
+                
+                Profile endUserProfile = dbWorker.getProfile(item.getRequestedUser());
+                for (Item matchingItem : endUserProfile.getBuyList())
+                {
+                    if (matchingItem.equals(item))
+                    {
+                        matchingItem.setItemStatus(ItemStatus.DECLINED);
+                        break;
+                    }
+                }
+                dbWorker.updateProfile(endUserProfile, item.getRequestedUser());
+                sendSaleRequestUpdateNotification(item.getRequestedUser(), clientUsername);
+                
+                communicator.sendAlert("Declined sale. '" + item.getRequestedUser() + "' was notified.");
+                TarkovTraderServer.broadcast("Request Worker: Seller '" + clientUsername + "' declined sale with '" + item.getRequestedUser() + "'.");
+            }
+            syncProfileWithModFlag();
+        }
+        
+        if (request.getAction() == ItemAction.REMOVE_FROM_REQUESTS)
+        {
+            if (item.getItemStatus() == ItemStatus.AWAITING_RESPONSE)
+            {
+                communicator.sendAlert("Request has not been acted upon. Cannot remove yet.");
+                return;
+            }
+            
+            if (currentProfile.getRequestedSales().contains(item))
+            {
+                currentProfile.removeRequestedSale(item);
+                dbWorker.updateProfile(currentProfile, clientUsername);
+                communicator.sendAlert("Request removed.");
+                TarkovTraderServer.broadcast("Request Worker: Requested sale from '" + item.getRequestedUser() + "' removed for '" + clientUsername + "'.");
+            }
+            else
+            {
+                communicator.sendAlert("Failed to remove request.");
+                TarkovTraderServer.broadcast("Request Worker: Failed to find requested sale to remove for " + clientUsername + ".");
+            }
+            syncProfileWithModFlag();
+        }
+        
+        if (request.getAction() == ItemAction.REMOVE_FROM_BUY_LIST)
+        {
+            if (item.getItemStatus() == ItemStatus.AWAITING_RESPONSE)
+            {
+                communicator.sendAlert("The seller hasn't replied to this request yet. Cannot remove.");
+                return;
+            }
+            
+            if (currentProfile.getBuyList().contains(item))
+            {
+                currentProfile.removeBuyItem(item);
+                dbWorker.updateProfile(currentProfile, clientUsername);
+                communicator.sendAlert("Item removed.");
+                TarkovTraderServer.broadcast("Request Worker: Buy item removed for " + clientUsername + ".");
+            }
+            else
+            {
+                communicator.sendAlert("Failed to remove item.");
+                TarkovTraderServer.broadcast("Request Worker: Failed to remove buy item for " + clientUsername + ".");
+            }
+            syncProfileWithModFlag();
+        }
+    }
+        
+    // End
     
     
     
@@ -903,9 +1211,9 @@ public class RequestWorker implements Runnable {
     }
     
 
-    private void disconnect()
+    public void disconnect()
     {
-        System.out.println("Client " + clientIp + " has disconnected.");
+        TarkovTraderServer.broadcast("Client " + clientIp + " has disconnected.");
             
         if (TarkovTraderServer.authenticatedUsers.containsKey(clientUsername))
         {

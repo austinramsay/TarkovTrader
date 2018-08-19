@@ -75,7 +75,6 @@ public class AddItemStage {
         this.trader = trader;
         this.worker = trader.getWorker();
         this.resourceLoader = new Resources();
-        resourceLoader.load();
     }
     
     

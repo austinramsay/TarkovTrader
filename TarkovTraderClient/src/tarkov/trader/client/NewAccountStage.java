@@ -65,7 +65,6 @@ public class NewAccountStage
         this.login = login;
         this.worker = worker;
         this.resourceLoader = new Resources();
-        this.resourceLoader.load();
     }
     
     

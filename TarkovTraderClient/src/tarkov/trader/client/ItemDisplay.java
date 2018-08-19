@@ -1,6 +1,7 @@
 
 package tarkov.trader.client;
 
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -15,6 +16,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import tarkov.trader.objects.ItemAction;
+import tarkov.trader.objects.ItemStatus;
+import tarkov.trader.objects.ItemStatusModRequest;
 import tarkov.trader.objects.ProcessedItem;
 import tarkov.trader.objects.ProfileRequest;
 
@@ -67,7 +71,6 @@ public class ItemDisplay {
         this.worker = trader.getWorker();
         this.item = item;
         this.resourceLoader = new Resources();
-        this.resourceLoader.load();
         
         display();
     }
@@ -319,9 +322,23 @@ public class ItemDisplay {
     }
     
     
+    // We need to add the item to the user's profile
+    // Send request to the server
     private void addItemToBuyList()
     {
+        ItemStatusModRequest addRequest = new ItemStatusModRequest(ItemAction.MOVE_TO_BUY_LIST, ItemStatus.AWAITING_RESPONSE, item.getItem());
         
+        if (!worker.sendForm(addRequest))
+            Platform.runLater(() -> Alert.display(null, "Failed to send request."));
+    }
+    
+    
+    private void removeItemFromBuyList()
+    {
+        ItemStatusModRequest removeRequest = new ItemStatusModRequest(ItemAction.REMOVE_FROM_BUY_LIST, ItemStatus.OPEN, item.getItem());
+        
+        if (!worker.sendForm(removeRequest))
+            Platform.runLater(() -> Alert.display(null, "Failed to send request."));
     }
     
 }

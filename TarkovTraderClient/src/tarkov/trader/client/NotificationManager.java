@@ -21,6 +21,9 @@ public class NotificationManager {
     
     private final String messageAlert = "%d new messages from %s.";
     private final String chatAlert = "New chat from %s.";
+    private final String newSaleRequestAlert = "New sale request from %s.";
+    private final String saleRequestUpdateAlert = "Sale request acknowledged from %s.";
+    private final String reputationUpdateAlert = "Profile reputation updated.";
     
     private boolean toFlagMessages;
     
@@ -90,6 +93,21 @@ public class NotificationManager {
                 if (shouldNotify)
                     notificationQueue.add(String.format(chatAlert, notification.getOriginUsername()));
                 toFlagMessages = true;
+                break;
+                
+            case "newsalerequest":
+                if (shouldNotify)
+                    notificationQueue.add(String.format(newSaleRequestAlert, notification.getOriginUsername()));
+                break;
+                
+            case "salerequestupdate":
+                if (shouldNotify)
+                    notificationQueue.add(String.format(saleRequestUpdateAlert, notification.getOriginUsername()));
+                break;
+                
+            case "repupdate":
+                if (shouldNotify)
+                    notificationQueue.add(reputationUpdateAlert);
                 break;
         }
         

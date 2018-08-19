@@ -27,14 +27,14 @@ public class Network implements Runnable {
         }
         catch (IOException e)
         {
-            System.out.println("Network: couldn't open server socket. Check port: " + port);
+            TarkovTraderServer.broadcast("Network: couldn't open server socket. Check port: " + port);
         }
     }
     
     
     private void beginListener()
     {
-        System.out.println("Network: Awaiting clients...");
+        TarkovTraderServer.broadcast("Network: Awaiting clients...");
         
         try
         {
@@ -45,7 +45,7 @@ public class Network implements Runnable {
         }
         catch (IOException e)
         {
-            System.out.println("Network: Failed to accept client.");
+            TarkovTraderServer.broadcast("Network: Failed to accept client.");
         }
     }
     
@@ -57,8 +57,7 @@ public class Network implements Runnable {
         client = server.accept();
         clientComm = server.accept();
         String clientIp = client.getInetAddress().getHostAddress();
-        System.out.println("Client connection from: " + clientIp);
-        
+        TarkovTraderServer.broadcast("Client connection from: " + clientIp);
         
         
         // Client immediately needs a request handler. Once a login or new account is requested, the server must be ready to accept and process

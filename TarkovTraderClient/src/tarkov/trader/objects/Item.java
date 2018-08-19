@@ -25,11 +25,12 @@ public class Item implements Serializable {
     private String keywords;
     private String notes;
     private String date;
+    private String requestedUser;
     private boolean suspended;
     
     // To be 'set' by the server
     private int itemId; // Will be set from the database autoincrement id value  --  NOT IN USE for now
-    private String dealStatus; // Finalized? Closed? Open?
+    private ItemStatus itemStatus; // Finalized? Closed? Open?
     private String sellerState; // Seller online or offline? 
     
     
@@ -45,8 +46,8 @@ public class Item implements Serializable {
         this.timezone = timezone;
         this.notes = notes;
         this.keywords = keywords;
-        this.dealStatus = "open";
         this.suspended = false;
+        this.itemStatus = ItemStatus.OPEN;
         setDate();
     }
     
@@ -108,9 +109,9 @@ public class Item implements Serializable {
         return notes;
     }
     
-    public String getDealStatus()
+    public ItemStatus getItemStatus()
     {
-        return dealStatus;
+        return itemStatus;
     }
     
     public String getDate()
@@ -131,6 +132,11 @@ public class Item implements Serializable {
         return suspended;
     }
     
+    public String getRequestedUser()
+    {
+        return requestedUser;
+    }
+    
     // Setters:
     
     public void setItemId(int id)
@@ -138,14 +144,14 @@ public class Item implements Serializable {
         itemId = id;
     }
     
-    public void setDealStatus(String status)
+    public void setItemStatus(ItemStatus itemStatus)
     {
-        this.dealStatus = status;
+        this.itemStatus = itemStatus;
     }
     
     private void setDate()
     {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+        DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm");
         this.date = dateFormat.format(new Date());
     }
     
@@ -160,5 +166,47 @@ public class Item implements Serializable {
     public void setSuspended(boolean isSuspended)
     {
         this.suspended = isSuspended;
+    }
+    
+    public void setRequestedUser(String username)
+    {
+        this.requestedUser = username;
+    }
+    
+    
+    // Override the equals method to use when comparing upon removing/modifying an item 
+    @Override
+    public boolean equals(Object item)
+    {
+        if (!(item instanceof Item))
+            return false;
+        
+        if (item == this)
+            return true;
+        
+        Item compareItem = (Item)item;
+        
+        if (!compareItem.getDate().equals(this.getDate()))
+            return false;
+        
+        if (!compareItem.getName().equals(this.getName()))
+            return false;
+        
+        if (!compareItem.getIgn().equals(this.getIgn()))
+            return false;
+        
+        if (!compareItem.getItemType().equals(this.getItemType()))
+            return false;
+        
+        if (compareItem.getPrice() != this.getPrice())
+            return false;
+        
+        if (!compareItem.getTradeState().equals(this.getTradeState()))
+            return false;
+        
+        if (compareItem.getRequestedUser() != null && this.getRequestedUser() != null && !compareItem.getRequestedUser().equals(this.getRequestedUser()))
+            return false;
+        
+        return true;
     }
 }

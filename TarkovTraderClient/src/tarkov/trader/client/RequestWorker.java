@@ -163,12 +163,7 @@ public class RequestWorker implements Runnable
                 // Browser only really needs the arraylist of items to populate
                 // Convert the 'Item's to 'ProcessedItem's and get an arraylist of ProcessedItems to send to browser
                 
-                if (itemlistform.getModeratorState())  // The requested item list was for the Moderator, populate the Moderator
-                {
-                    Platform.runLater(() -> trader.getModerator().populate(getProcessedItemList(itemlistform)));
-                }
-                else                                   // The requested item list was for the Browser, populate the Browser
-                    Platform.runLater(() -> trader.getBrowser().populate(getProcessedItemList(itemlistform)));
+                Platform.runLater(() -> trader.getBrowser().populate(getProcessedItemList(itemlistform)));
                 
                 break;
                 
@@ -338,7 +333,15 @@ public class RequestWorker implements Runnable
         
         final boolean allowEdit = matchingProfile.getUsername().equals(TarkovTrader.username);   // Add fields to edit profile if this matches user's username
         
-        Platform.runLater(() -> trader.displayProfile(matchingProfile, allowEdit));
+        String flag = null;
+        
+        if (profileRequest.flags != null && !profileRequest.flags.isEmpty())
+            flag = profileRequest.flags.get(0);
+        
+        if (flag != null && flag.equals("moderator"))
+            Platform.runLater(() -> trader.getModerator().populate(matchingProfile));
+        else
+            Platform.runLater(() -> trader.displayProfile(matchingProfile, allowEdit));
     }
     
     

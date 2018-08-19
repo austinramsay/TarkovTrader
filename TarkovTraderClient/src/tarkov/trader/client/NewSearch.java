@@ -61,7 +61,6 @@ public class NewSearch {
         this.trader = trader;
         this.browser = browser;
         this.resourceLoader = new Resources();
-        this.resourceLoader.load();
     }
     
     

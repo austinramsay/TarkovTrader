@@ -95,8 +95,7 @@ public class Sale implements Serializable {
     
     private void setDate()
     {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+        DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm");
         this.saleDate = dateFormat.format(new Date());        
     }
-    
 }

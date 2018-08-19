@@ -34,8 +34,7 @@ public class DatabaseWorker
     
     public DatabaseWorker()
     {
-        // Should only use simple methods not requiring Worker/Communicator information directly
-        // Should only be used by the Server to pull database info
+        // Server use only
     }
     
     
@@ -58,7 +57,7 @@ public class DatabaseWorker
         catch (ClassNotFoundException e)
         {
             String error = "Network: Connection to database failed. Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             
             return null;
@@ -66,7 +65,7 @@ public class DatabaseWorker
         catch (SQLException e)
         {
             String error = "Network: SQLException when attempting DB connection. Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return null;
         }
@@ -74,7 +73,7 @@ public class DatabaseWorker
     
     
     /* 
-    // The next section deals with returning simple queries such as simple string client info 
+    // SIMPLE QUERY METHODS
     // For example, fetching a user's stored timezone and ign to be returned in the LoginForm at authentication
     */
     
@@ -100,7 +99,7 @@ public class DatabaseWorker
         }
         catch (SQLException e)
         {
-            System.out.println("DBWorker: Failed to perform simple query. Given command: " + command + ". Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: Failed to perform simple query. Given command: " + command + ". Error: " + e.getMessage());
             return null;
         }
         finally 
@@ -112,7 +111,7 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close simple query resources."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close simple query resources."); }
         }
     }
     
@@ -139,7 +138,7 @@ public class DatabaseWorker
         }
         catch (SQLException e)
         {
-            System.out.println("DBWorker: Failed to perform simple blob query. Given command: " + command + ". Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: Failed to perform simple blob query. Given command: " + command + ". Error: " + e.getMessage());
             return null;
         }
         finally 
@@ -151,10 +150,10 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close simple query resources."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close simple query resources."); }
         }    
     }
-    
+
     
     public ArrayList<String> pullUserList()
     {
@@ -189,7 +188,7 @@ public class DatabaseWorker
         }
         catch (SQLException e)
         {
-            System.out.println("DBWorker: Failed to perform simple result query. Given command: " + command + ". Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: Failed to perform simple result query. Given command: " + command + ". Error: " + e.getMessage());
             return null;
         }
         finally 
@@ -201,14 +200,14 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close simple query resources."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close simple query resources."); }
         }
     }
         
         
     
     /*
-    // The next section deals with authenticating user logins and retrieving account info upon login
+    // LOGIN INFORMATION / AUTHENTICATION
     // The users password is matched to their username and returns a boolean value to be used in Request Worker
     */
         
@@ -254,7 +253,7 @@ public class DatabaseWorker
         }
         catch (SQLException e)
         {
-            System.out.println("DBWorker: SQL Exception for " + clientIp + " when attempting to authenticate. Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: SQL Exception for " + clientIp + " when attempting to authenticate. Error: " + e.getMessage());
             return false;
         }
         finally 
@@ -266,7 +265,7 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources when verifying login for " + clientIp + ". Error: " + e.getMessage()); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources when verifying login for " + clientIp + ". Error: " + e.getMessage()); }
         }
     }
     
@@ -285,7 +284,7 @@ public class DatabaseWorker
             
         } catch (NoSuchAlgorithmException e)
         {
-            System.out.println("Security: Failed to hash password with specified algorithm.");
+            TarkovTraderServer.broadcast("Security: Failed to hash password with specified algorithm.");
             return null;
         }
     }
@@ -304,7 +303,6 @@ public class DatabaseWorker
         
         clientInfo.put("ign", clientIgn);
         clientInfo.put("timezone", clientTimezone);
-        // Add chatmap here?
         
         return clientInfo;
     }
@@ -324,6 +322,61 @@ public class DatabaseWorker
         Object fileObject = convertBlobToObject(fileBytes);
         
         return (File)fileObject;
+    }
+    
+    
+    // Return an ArrayList of items the user has for sale. This is used to rebuild a broken profile
+    // The user's completed sales and buy list will be lost however
+    public ArrayList<Item> getUserItems(String username)
+    {
+        String command = "SELECT ItemObject FROM items WHERE username=?";
+        String onlyParameter = username;
+
+        ArrayList<Item> itemList = new ArrayList<>();
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        ResultSet result = null;
+        
+        try 
+        {
+            dbConnection = this.getDBconnection();
+            statement = dbConnection.prepareStatement(command);
+            statement.setString(1, username);
+            result = statement.executeQuery();
+            
+            if (result == null)
+            {
+                // No items in the database
+                return itemList;
+            }
+            
+            while (result.next())
+            {
+                // Iterate results from the item query
+                Object itemObject = convertBlobToObject(result.getBytes(1));
+                Item matchingItem = (Item)itemObject;
+                itemList.add(matchingItem);
+            }
+            
+            return itemList;
+        }
+        catch (SQLException e)
+        {
+            TarkovTraderServer.broadcast("DBWorker: Failed to retrieve " + username + "'s list of items. Error: " + e.getMessage());
+            return null;
+        }
+        finally 
+        {
+            try {
+                if (result != null)
+                    result.close();
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close simple query resources."); }
+        }        
     }
     
     
@@ -386,7 +439,7 @@ public class DatabaseWorker
         } 
         catch (SQLException e)
         {
-            System.out.println("DBWorker: Failed to test for field existence on new account request for " + clientIp + ". Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: Failed to test for field existence on new account request for " + clientIp + ". Error: " + e.getMessage());
             return 4;
         }
         finally 
@@ -398,7 +451,7 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources when verifying existing fields for " + clientIp + ". Error: " + e.getMessage()); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources when verifying existing fields for " + clientIp + ". Error: " + e.getMessage()); }
         }
     }
     
@@ -444,13 +497,13 @@ public class DatabaseWorker
             statement.setObject(2, newnotificationlist);
             statement.executeUpdate();
             
-            System.out.println("DBWorker: New account success for: " + clientIp);
+            TarkovTraderServer.broadcast("DBWorker: New account success for: " + clientIp);
             communicator.sendAlert("Account successfully created.");
         }
         catch (SQLException e)
         {
             String error = "DBWorker: New account insert failed. Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
         }
         finally // Close resources
@@ -460,7 +513,7 @@ public class DatabaseWorker
                    statement.close();
                if (dbConnection != null)
                    dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources for new account insert. Error: " + e.getMessage()); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources for new account insert. Error: " + e.getMessage()); }
         }
     }
     
@@ -476,7 +529,7 @@ public class DatabaseWorker
     
     public boolean insertNewItem(Item newItem)
     {
-        String command = "INSERT INTO items (State, Type, Name, Price, Ign, Username, Timezone, Keywords, Notes, DealStatus, ItemObject) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        String command = "INSERT INTO items (State, Type, Name, Price, Ign, Username, Timezone, Keywords, Notes, ItemObject) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         
         try 
         {
@@ -491,8 +544,7 @@ public class DatabaseWorker
             statement.setString(7, newItem.getTimezone());
             statement.setString(8, newItem.getKeywords());
             statement.setString(9, newItem.getNotes());
-            statement.setString(10, newItem.getDealStatus());
-            statement.setObject(11, newItem);
+            statement.setObject(10, newItem);
             
             statement.executeUpdate();
             statement.close();
@@ -502,7 +554,7 @@ public class DatabaseWorker
         catch (SQLException e)
         {
             String error = "DBWorker: New item insert failed. Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return false;
         }
@@ -542,7 +594,7 @@ public class DatabaseWorker
         }
         catch (SQLException e)
         {
-            System.out.println("Request process: Failed to retrieve item objects. " + e.getMessage());
+            TarkovTraderServer.broadcast("Request process: Failed to retrieve item objects. " + e.getMessage());
             e.printStackTrace();
         }
         finally 
@@ -556,7 +608,7 @@ public class DatabaseWorker
                 if (dbConnection != null)
                     dbConnection.close();
             } catch (SQLException e)
-            { System.out.println("DBWorker: Couldn't close resources. Error: " + e.getMessage()); }
+            { TarkovTraderServer.broadcast("DBWorker: Couldn't close resources. Error: " + e.getMessage()); }
              
             
         }
@@ -565,7 +617,7 @@ public class DatabaseWorker
         
         if (worker.sendForm(itemlistform))
         {
-            System.out.println("Request complete: Returned item list to " + clientIp + ".");
+            TarkovTraderServer.broadcast("Request complete: Returned item list to " + clientIp + ".");
         }
     }
     
@@ -612,13 +664,13 @@ public class DatabaseWorker
         {
             String error = "DBWorker: Item list query failed. Error: " + e.getMessage();
             e.printStackTrace();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return null;
         }
         catch (NumberFormatException e)
         {
-            System.out.println("DBWorker: Number format exception parsing price flag.");
+            TarkovTraderServer.broadcast("DBWorker: Number format exception parsing price flag.");
             return null;
         }
     }
@@ -670,10 +722,13 @@ public class DatabaseWorker
         
         if (!itemModRequest.getItemToModify().getUsername().equals(compareUsername))
         {
-            System.out.println("DBWorker: Failed to authenticate matching user to modify item. Item username is " + itemUsername + " compared to attempted user " + compareUsername + ".");
+            TarkovTraderServer.broadcast("DBWorker: Failed to authenticate matching user to modify item. Item username is " + itemUsername + " compared to attempted user " + compareUsername + ".");
             communicator.sendAlert("Authentication failure. Failed to delete listing.");
             return false;
         }
+        
+        // Pull the client's profile to update after said modification
+        Profile currentProfile = getProfile(itemUsername);
         
         try 
         {
@@ -683,7 +738,7 @@ public class DatabaseWorker
             {
                 case "delete":
                     
-                    command = "DELETE FROM items WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                    command = "DELETE FROM items WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ?;";
                     
                     // TODO TODO TODO COMPARE DATE OF STORED ITEM TO REQUESTED ITEM
                     // TODO TODO TODO TODO
@@ -693,9 +748,14 @@ public class DatabaseWorker
                     statement.setString(3, itemToModify.getName());
                     statement.setString(4, itemToModify.getIgn());
                     statement.setString(5, itemToModify.getUsername());
-                    statement.setString(6, itemToModify.getDealStatus());
                     int deleteCount = statement.executeUpdate();
-                    System.out.println("DBWorker: " + deleteCount + " item(s) deleted for " + itemUsername + ".");
+                    
+                    // Sync client's profile
+                    currentProfile.removeItem(itemToModify);
+                    updateProfile(currentProfile, itemUsername);
+                    // Done
+                    
+                    TarkovTraderServer.broadcast("DBWorker: " + deleteCount + " item(s) deleted for " + itemUsername + ".");
                     communicator.sendAlert(deleteCount + " item(s) deleted successfully.");
                     break;
                     
@@ -704,23 +764,26 @@ public class DatabaseWorker
                     
                     // First, update the ItemObject in the database
                     command = "UPDATE items SET ItemObject = ?, ItemId = (SELECT @update_id := ItemId) "
-                            + "WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                            + "WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ?;";
                     
+                    // Before running the command, create our update_id variable so we know what the ID is after it is updated
                     statement = dbConnection.prepareStatement("SET @update_id := 0;");
                     statement.execute();
+                    // Variable ready for use
                     
+                    // Perform modifications
                     statement = dbConnection.prepareStatement(command);
                     statement.setObject(1, preModifiedItem);
                     statement.setString(2, itemToModify.getTradeState());
                     statement.setString(3, itemToModify.getItemType());
                     statement.setString(4, itemToModify.getName());
                     statement.setString(5, itemToModify.getIgn());
-                    statement.setString(6, itemToModify.getUsername());
-                    statement.setString(7, itemToModify.getDealStatus());                    
+                    statement.setString(6, itemToModify.getUsername());               
                     int objectEditCount = statement.executeUpdate();
-                    
+                    // Done
                     
                     // Now, update the entry in the database
+                    // Get our last updated ItemID 
                     statement = dbConnection.prepareStatement("SELECT @update_id;");
                     result = statement.executeQuery();
                     int itemId = 0;
@@ -737,45 +800,58 @@ public class DatabaseWorker
                     statement.setString(6, preModifiedItem.getNotes());
                     statement.setInt(7, itemId);
                     int entryEditCount = statement.executeUpdate();
+                    // Done
+                    
+                    // Sync the client's profile
+                    currentProfile.removeItem(itemToModify);
+                    currentProfile.appendItem(preModifiedItem);
+                    updateProfile(currentProfile, itemUsername);
+                    // Done
                     
                     if (entryEditCount != objectEditCount)
                     {
                         communicator.sendAlert("Item was modified but there was an issue applying all changes.");
-                        System.out.println("DBWorker: Modification request exception. " + entryEditCount + " entries were modifed with " + objectEditCount + " object(s) edited.");
+                        TarkovTraderServer.broadcast("DBWorker: Modification request exception. " + entryEditCount + " entries were modifed with " + objectEditCount + " object(s) edited.");
                         return false;
                     }
                     
-                    System.out.println("DBWorker: " + entryEditCount + " item(s) edited for " + itemUsername);
+                    TarkovTraderServer.broadcast("DBWorker: " + entryEditCount + " item(s) edited for " + itemUsername);
                     communicator.sendAlert(entryEditCount + " item(s) successfully edited.");
                     break;
                     
                     
                 case "suspend":
                     
-                    command = "UPDATE items SET ItemObject=? WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ? AND DealStatus LIKE ?;";
+                    command = "UPDATE items SET ItemObject=? WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ?;";
                     
                     // TODO TODO TODO COMPARE DATE OF STORED ITEM TO REQUESTED ITEM
                     // TODO TODO TODO TODO
                     statement = dbConnection.prepareStatement(command);
-                    statement.setObject(1, itemToModify);
-                    statement.setString(2, itemToModify.getTradeState());
-                    statement.setString(3, itemToModify.getItemType());
-                    statement.setString(4, itemToModify.getName());
-                    statement.setString(5, itemToModify.getIgn());
-                    statement.setString(6, itemToModify.getUsername());
-                    statement.setString(7, itemToModify.getDealStatus());
+                    statement.setObject(1, preModifiedItem);
+                    statement.setString(2, preModifiedItem.getTradeState());
+                    statement.setString(3, preModifiedItem.getItemType());
+                    statement.setString(4, preModifiedItem.getName());
+                    statement.setString(5, preModifiedItem.getIgn());
+                    statement.setString(6, preModifiedItem.getUsername());
                     int suspendCount = statement.executeUpdate();
                     
-                    boolean isSuspended = itemToModify.getSuspensionState();
+                    boolean isSuspended = preModifiedItem.getSuspensionState();
                     
+                    // Sync the client's profile
+                    currentProfile.removeItem(itemToModify);
+                    currentProfile.appendItem(preModifiedItem);
+                    updateProfile(currentProfile, itemUsername);
+                    // Done
+                    
+                    // Communication
                     if (isSuspended)
                     {
-                        System.out.println("DBWorker: " + suspendCount + " item(s) suspended for " + itemUsername + ".");
+                        TarkovTraderServer.broadcast("DBWorker: " + suspendCount + " item(s) suspended for " + itemUsername + ".");
                         communicator.sendAlert(suspendCount + " item(s) suspended.");
                     }
                     else
                     {
-                        System.out.println("DBWorker: " + suspendCount + " item(s) unsuspended for " + itemUsername + ".");
+                        TarkovTraderServer.broadcast("DBWorker: " + suspendCount + " item(s) unsuspended for " + itemUsername + ".");
                         communicator.sendAlert(suspendCount + " item(s) unsuspended.");                        
                     }
                     
@@ -788,7 +864,7 @@ public class DatabaseWorker
         {
             String error = "Item modification failed. Error: " + e.getMessage();
             e.printStackTrace();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return false;           
         }
@@ -801,7 +877,7 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after processing item modification for " + compareUsername + "."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources after processing item modification for " + compareUsername + "."); }
         }
     }
     
@@ -840,7 +916,7 @@ public class DatabaseWorker
         catch (SQLException e)
         {
             String error = "DBWorker: New chat map insert failed. Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return false;
         }
@@ -851,7 +927,7 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after inserting chat map for " + clientIp + "."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources after inserting chat map for " + clientIp + "."); }
         }
     }
     
@@ -938,7 +1014,7 @@ public class DatabaseWorker
         catch (SQLException e)
         {
             String error = "DBWorker: New message insert failed for " + clientIp + ". Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return false;
         }
@@ -951,7 +1027,7 @@ public class DatabaseWorker
                     result.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after inserting message for " + clientIp + "."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources after inserting message for " + clientIp + "."); }
         }
     }
     
@@ -979,12 +1055,12 @@ public class DatabaseWorker
         }
         catch (IOException e)
         {
-            System.out.println("DBWorker: IO Exception converting blob to object. Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: Version difference in client versus server. (Attempting to convert blob to object)");
             return null;
         }
         catch (ClassNotFoundException e)
         {
-            System.out.println("DBWorker: Class type not found converting blob to object. Error: " + e.getMessage());
+            TarkovTraderServer.broadcast("DBWorker: Class type not found converting blob to object. Error: " + e.getMessage());
             return null;
         }
         finally 
@@ -998,7 +1074,7 @@ public class DatabaseWorker
             }
             catch (IOException e)
             {
-                System.out.println("Request worker: Failed to close blob to object resources.");
+                TarkovTraderServer.broadcast("Request worker: Failed to close blob to object resources.");
             }
         }
     }
@@ -1048,7 +1124,7 @@ public class DatabaseWorker
         catch (SQLException e)
         {
             String error = "DBWorker: New notifications insert failed. Error: " + e.getMessage();
-            System.out.println(error);
+            TarkovTraderServer.broadcast(error);
             communicator.sendAlert(error);
             return false;
         }
@@ -1059,7 +1135,7 @@ public class DatabaseWorker
                     statement.close();
                 if (dbConnection != null)
                     dbConnection.close();
-            } catch (SQLException e) { System.out.println("DBWorker: Failed to close resources after inserting notifications for " + clientIp + "."); }
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources after inserting notifications for " + clientIp + "."); }
         }        
     }
     
@@ -1075,6 +1151,7 @@ public class DatabaseWorker
         
         return true;
     }
+    
     
     
     /*
@@ -1096,6 +1173,50 @@ public class DatabaseWorker
         
         return (Profile)profileObject;
     }
+    
+    
+    public boolean updateProfile(Profile profile, String username)
+    {
+        String command = "UPDATE accounts SET profile=? WHERE username=?";
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        
+        try 
+        {
+            dbConnection = getDBconnection();
+            statement = dbConnection.prepareStatement(command);   
+            
+            statement.setObject(1, profile);            
+            statement.setString(2, username);
+            
+            statement.executeUpdate();
+            
+            TarkovTraderServer.broadcast("DBWorker: Profile (" + username + ") updated successfully.");
+            
+            return true;
+        }
+        catch (SQLException e)
+        {
+            String error = "DBWorker: Profile update failed for " + username + ". Error: " + e.getMessage();
+            TarkovTraderServer.broadcast(error);
+            communicator.sendAlert(error);
+            return false;
+        }
+        finally 
+        {
+            try {
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { TarkovTraderServer.broadcast("DBWorker: Failed to close resources after inserting notifications for " + clientIp + "."); }
+            
+            // Finally, sync the 'current' profile
+            worker.updateCurrentProfile(profile);            
+        }
+    }
+    
 }
 
 

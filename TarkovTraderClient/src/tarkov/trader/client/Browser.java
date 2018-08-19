@@ -75,7 +75,6 @@ public class Browser {
         this.trader = trader;
         this.worker = trader.getWorker();
         this.resourceLoader = new Resources();
-        resourceLoader.load();
         
         this.isPopulated = false;
     }
@@ -300,11 +299,11 @@ public class Browser {
         
         if (pullSearchFlags)
         {
-            listrequest = new ItemListForm(getSearchFlags(), false);
+            listrequest = new ItemListForm(getSearchFlags());
         }
         else
         {
-            listrequest = new ItemListForm(buildFilterFlags(), false);
+            listrequest = new ItemListForm(buildFilterFlags());
         }
 
         // use worker to send, wait for server response, table will populate upon receiving list
