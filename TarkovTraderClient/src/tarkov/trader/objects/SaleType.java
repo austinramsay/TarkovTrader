@@ -9,8 +9,7 @@ package tarkov.trader.objects;
 public enum SaleType {
     
     SOLD("Sold"),
-    BOUGHT("Purchased"),
-    REMOVED("Removed By Mod");
+    BOUGHT("Purchased");
     
     private final String description;
     

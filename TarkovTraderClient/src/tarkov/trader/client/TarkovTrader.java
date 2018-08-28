@@ -3,7 +3,12 @@ package tarkov.trader.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -55,6 +60,7 @@ public class TarkovTrader extends Application {
     private MenuBar menubar;
     private Menu ttMenu;
     private MenuItem aboutMenuItem;
+    private MenuItem toggleAutoLoginMenuItem;
     private MenuItem logoutMenuItem;
     private Image avatar;
     private ImageView avatarViewer;
@@ -70,12 +76,10 @@ public class TarkovTrader extends Application {
     private Button addItemButton;
     // End JavaFX variable declarations
     
-    
     // Logical variable declarations
     public static String username;
     public static String ign;
     public static String timezone;
-    public static File userImageFile;
     public static boolean connected;
     public static volatile boolean authenticated;
     public static AtomicBoolean syncInProgress;  
@@ -84,8 +88,12 @@ public class TarkovTrader extends Application {
     public static volatile ArrayList<String> userList;
     public static volatile ArrayList<String> onlineList;
     public static volatile ArrayList<Notification> notificationsList;
+    public static HashMap<Preferences, String> userPrefs;
     // End logical variable declarations
     
+    // File variables
+    private static final File PREFS_FILE = new File(System.getProperty("user.home") + "/.tarkovtrader_prefs");
+    public static File userImageFile;
     
     
     @Override
@@ -99,11 +107,14 @@ public class TarkovTrader extends Application {
         currentChats = new ArrayList<>();
         userList = new ArrayList<>();
         
+        // Load the preferences file information into the userPrefs HashMap
+        loadPrefs();
+        
         // Initialize Notification Manager
         startNotificationManager();
         
+        // Initialize resource loader and the loading prompt
         resourceLoader = new Resources();
-        
         loadingPrompt = new LoadingAnimator();
         
         // Networking is needed at launch for login or creating a new account
@@ -116,6 +127,97 @@ public class TarkovTrader extends Application {
     }
     
     
+    private void loadPrefs()
+    {
+        ObjectInputStream ois = null;
+        
+        try 
+        {
+            if (!TarkovTrader.PREFS_FILE.exists())
+            {
+                createNewPrefsFile();
+            }
+            
+            ois = new ObjectInputStream(new FileInputStream(TarkovTrader.PREFS_FILE));
+            userPrefs = (HashMap)ois.readObject();
+        }
+        catch (ClassNotFoundException e)
+        {
+            Alert.display(null, "Failed to cast preferences.");
+            e.printStackTrace();
+        }
+        catch (IOException e)
+        {
+            Alert.display(null, "Failed to load preferences.");
+            e.printStackTrace();
+        }
+        finally 
+        {
+            try {
+                if (ois != null)
+                    ois.close();
+            } catch(IOException e) {  e.printStackTrace();  }
+        }        
+    }
+    
+    
+    private void createNewPrefsFile()
+    {
+        ObjectOutputStream oos = null;
+        
+        try 
+        {
+            TarkovTrader.PREFS_FILE.createNewFile();
+            oos = new ObjectOutputStream(new FileOutputStream(TarkovTrader.PREFS_FILE));
+            HashMap<Preferences, String> newPrefsMap = new HashMap<>();
+            newPrefsMap.put(Preferences.AUTO_LOGIN, "off");
+            newPrefsMap.put(Preferences.REMEMBER_ME, "off");
+            newPrefsMap.put(Preferences.USERNAME, "");
+            newPrefsMap.put(Preferences.PASSWORD, "");
+            oos.writeObject(newPrefsMap);
+        }
+        catch (IOException e)
+        {
+            Alert.display(null, "Failed to create preferences file.");
+            e.printStackTrace();
+        }
+        finally 
+        {
+            try {
+                if (oos != null)
+                    oos.close();
+            } catch(IOException e) {  e.printStackTrace();  }
+        }        
+    }
+    
+    
+    public static void updatePrefs(Preferences prefs, String value)
+    {
+        ObjectOutputStream oos = null;
+        
+        try 
+        {
+            oos = new ObjectOutputStream(new FileOutputStream(TarkovTrader.PREFS_FILE));
+            if (TarkovTrader.userPrefs.containsKey(prefs))
+                userPrefs.replace(prefs, userPrefs.get(prefs), value);
+            
+            oos.writeObject(userPrefs);
+        }
+        catch (IOException e)
+        {
+            Alert.display(null, "Failed to create edit preferences file.");
+            e.printStackTrace();
+        }        
+        finally 
+        {
+            try {
+                if (oos != null)
+                    oos.close();
+            } catch(IOException e) {  e.printStackTrace();  }
+        }
+    }
+    
+    
     private void displayLogin()
     {
         mainLogin = new LoginPrompt(this);
@@ -125,6 +227,8 @@ public class TarkovTrader extends Application {
     
     public void drawMainUI()
     {   
+        mainLogin = null;
+        
          // Load all images and initialize ImageViews
         loadResources();
         
@@ -137,10 +241,19 @@ public class TarkovTrader extends Application {
         aboutMenuItem = new MenuItem("About");
         aboutMenuItem.setOnAction(e -> new AboutStage());
         
+        toggleAutoLoginMenuItem = new MenuItem("Disable Auto Login");
+        if (TarkovTrader.userPrefs.get(Preferences.AUTO_LOGIN).equals("off"))
+            toggleAutoLoginMenuItem.setDisable(true);
+        toggleAutoLoginMenuItem.setOnAction(e -> {
+            TarkovTrader.updatePrefs(Preferences.AUTO_LOGIN, "off");
+            toggleAutoLoginMenuItem.setDisable(true);
+        });
+        
         logoutMenuItem = new MenuItem("Logout");
         logoutMenuItem.setOnAction(e -> close());
         
-        ttMenu.getItems().addAll(aboutMenuItem, logoutMenuItem);
+        ttMenu.getItems().addAll(aboutMenuItem, toggleAutoLoginMenuItem, logoutMenuItem);
+        
         
         // Username display label setup
         usernameDisplay = new Label(username);

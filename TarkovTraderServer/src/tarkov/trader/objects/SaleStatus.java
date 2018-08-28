@@ -9,12 +9,7 @@ package tarkov.trader.objects;
 public enum SaleStatus {
     
     BUYER_CONFIRMED("+Rep as Buyer"),
-    SELLER_CONFIRMED("+Rep as Seller"),
-    MOD_REMOVED("Removed By Mod -Rep"),
-    SELLER_FAILED("Seller Failed to Complete -Rep"),
-    BUYER_FAILED("Buyer Failed to Complete -Rep"),
-    PURCHASE_SCAM("Scammed Purchase -Rep"),
-    SELL_SCAM("Scammed Sale -Rep");
+    SELLER_CONFIRMED("+Rep as Seller");
     
     private final String description;
     

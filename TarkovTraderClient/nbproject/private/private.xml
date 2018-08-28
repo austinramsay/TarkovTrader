@@ -3,10 +3,9 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/home/austin/OneDrive/Documents/Netbeans%20Projects/TarkovTraderGit/TarkovTraderClient/src/tarkov/trader/objects/Profile.java</file>
+            <file>file:/home/austin/OneDrive/Documents/Netbeans%20Projects/TarkovTraderGit/TarkovTraderClient/src/tarkov/trader/client/RequestWorker.java</file>
             <file>file:/home/austin/OneDrive/Documents/Netbeans%20Projects/TarkovTraderGit/TarkovTraderClient/src/tarkov/trader/client/Moderator.java</file>
-            <file>file:/home/austin/OneDrive/Documents/Netbeans%20Projects/TarkovTraderGit/TarkovTraderClient/src/tarkov/trader/objects/ItemAction.java</file>
-            <file>file:/home/austin/OneDrive/Documents/Netbeans%20Projects/TarkovTraderGit/TarkovTraderClient/src/tarkov/trader/objects/ItemStatusModRequest.java</file>
+            <file>file:/home/austin/OneDrive/Documents/Netbeans%20Projects/TarkovTraderGit/TarkovTraderClient/src/tarkov/trader/client/NotificationManager.java</file>
         </group>
     </open-files>
 </project-private>

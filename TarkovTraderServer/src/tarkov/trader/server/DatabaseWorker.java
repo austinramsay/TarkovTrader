@@ -16,6 +16,7 @@ import tarkov.trader.objects.Chat;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemListForm;
 import tarkov.trader.objects.ItemModificationRequest;
+import tarkov.trader.objects.ItemStatus;
 import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.NewAccountForm;
 import tarkov.trader.objects.Notification;
@@ -729,6 +730,19 @@ public class DatabaseWorker
         
         // Pull the client's profile to update after said modification
         Profile currentProfile = getProfile(itemUsername);
+        if (currentProfile == null)
+        {
+            TarkovTraderServer.broadcast("DBWorker: Item modification failed. Profile is null.");
+            communicator.sendAlert("Failed to process item modification.");
+            return false;
+        }
+        
+        if (itemToModify.getItemStatus() != ItemStatus.OPEN)
+        {
+            TarkovTraderServer.broadcast("DBWorker: Item modification not permitted. Item status is not 'open' (" + itemToModify.getItemStatus().getReason() +")" + ".");
+            communicator.sendAlert("Modification not permitted. Item status not 'open'.");
+            return false;
+        }
         
         try 
         {

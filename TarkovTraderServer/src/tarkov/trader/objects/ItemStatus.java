@@ -9,9 +9,10 @@ package tarkov.trader.objects;
 public enum ItemStatus {
     
     OPEN("Available"),
-    AWAITING_RESPONSE("Awaiting response"),
-    DECLINED("Declined"),
-    CONFIRMED("Accepted");
+    AWAITING_RESPONSE("Awaiting Response"),
+    REPORT_PENDING("Report Pending"),
+    DECLINED("Seller Declined."),
+    CONFIRMED("Seller Accepted.");
     
     private String reason;
     

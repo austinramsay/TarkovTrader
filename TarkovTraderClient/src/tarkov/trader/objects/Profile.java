@@ -28,6 +28,7 @@ public class Profile implements Serializable {
     private ArrayList<Item> buyList;
     private ArrayList<Item> requestedSales;
     private ArrayList<AccountFlag> accountFlags;
+    private ArrayList<Report> reports;
     private int repPoints;
     
     public Profile(String username, String ign, String timezone)
@@ -41,6 +42,7 @@ public class Profile implements Serializable {
         this.buyList = new ArrayList<>();
         this.requestedSales = new ArrayList<>();
         this.accountFlags = new ArrayList<>();
+        this.reports = new ArrayList<>();
         setDate();
     }
     
@@ -94,6 +96,11 @@ public class Profile implements Serializable {
         return registrationDate;
     }
     
+    public ArrayList<Report> getReports()
+    {
+        return reports;
+    }
+    
     
     // Modifiers:
     private void setDate()
@@ -124,9 +131,26 @@ public class Profile implements Serializable {
             System.out.println("Profile: Sale does not exist for profile " + username + ".");
     }
     
-    public void setItemList(ArrayList<Item> itemList)
+    public void appendReport(Report report)
     {
-        this.currentSales = itemList;
+        if (!reports.contains(report))
+        {
+            reports.add(report);
+            resolvePoints();
+        }
+        else
+            System.out.println("Profile: Report already exists for profile " + username + ".");
+    }
+    
+    public void removeReport(Report report)
+    {
+        if (reports.contains(report))
+        {
+            reports.remove(report);
+            resolvePoints();
+        }
+        else
+            System.out.println("Profile: Report does not exist for profile " + username + ".");
     }
     
     public void setBuyList(ArrayList<Item> buyList)
@@ -147,6 +171,11 @@ public class Profile implements Serializable {
     public void setCurrentSalesList(ArrayList<Item> currentSales)
     {
         this.currentSales = currentSales;
+    }
+    
+    public void setReportsList(ArrayList<Report> reports)
+    {
+        this.reports = reports;
     }
     
     public void appendItem(Item item)
@@ -264,6 +293,32 @@ public class Profile implements Serializable {
             }
         }
         
+        for (Report report : reports)
+        {
+            switch (report.getReportReason())
+            {
+                case MOD_REMOVED:
+                    repPoints -= 30;
+                    break;
+                    
+                case SELLER_FAILED:
+                    repPoints -= 30;
+                    break;
+                    
+                case BUYER_FAILED:
+                    repPoints -= 30;
+                    break;
+                    
+                case PURCHASE_SCAM:
+                    repPoints -= 200;
+                    break;
+                    
+                case SELL_SCAM:
+                    repPoints -= 200;
+                    break;
+            }
+        }
+        
         for (Sale completedSale : completedSales)
         {
             switch (completedSale.getSaleStatus())
@@ -275,23 +330,38 @@ public class Profile implements Serializable {
                 case SELLER_CONFIRMED:
                     repPoints += 10;
                     break;
-                    
-                case MOD_REMOVED:
-                    repPoints -= 30;
-                    break;
-                    
-                case BUYER_FAILED:
-                    repPoints -= 10;
-                    break;
-                    
-                case SELLER_FAILED:
-                    repPoints -= 10;
-                    break;
                 
                 default:
                     // Points will be handled by account flags for any other sale status'
                     break;
             }
         }
+    }
+    
+    
+    public ItemLocation getItemLocation(Item item)
+    {
+        ItemLocation location = null;
+        
+        for (Item buyItem : buyList)
+        {
+            if (buyItem.equals(item))
+            {
+                location = new ItemLocation(ListLocation.BUY_LIST, buyList.indexOf(buyItem));
+                return location;
+            }
+        }
+        
+        for (Item requestItem : requestedSales)
+        {
+            if (requestItem.equals(item))
+            {
+                location = new ItemLocation(ListLocation.SALE_REQUEST_LIST, requestedSales.indexOf(requestItem));
+                return location;
+            }
+        }
+        
+        // Failed to find the item
+        return null;
     }
 }

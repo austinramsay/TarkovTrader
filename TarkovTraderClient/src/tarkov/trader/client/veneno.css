@@ -31,6 +31,14 @@
     -fx-text-fill:#383838;
 }
 
+.check-box .box {
+    -fx-background-color: black;
+}
+
+.check-box {
+    -fx-text-fill: white;
+}
+
 .centralDisplayButton {
     -fx-background-color: transparent;
     -fx-border-color: transparent;

@@ -10,6 +10,7 @@ public enum ItemStatus {
     
     OPEN("Available"),
     AWAITING_RESPONSE("Awaiting Response"),
+    REPORT_PENDING("Report Pending"),
     DECLINED("Seller Declined."),
     CONFIRMED("Seller Accepted.");
     

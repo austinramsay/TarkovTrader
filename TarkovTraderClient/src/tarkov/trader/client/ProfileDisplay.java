@@ -25,6 +25,7 @@ import tarkov.trader.objects.AccountFlag;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ProcessedItem;
 import tarkov.trader.objects.Profile;
+import tarkov.trader.objects.Report;
 import tarkov.trader.objects.Sale;
 
 /**
@@ -57,6 +58,7 @@ public class ProfileDisplay {
     private Button contactButton;
     private Button returnButton;
     
+    private TableView reportsTable;
     private TableView completedSalesTable;
     private TableView currentSalesTable;
     
@@ -77,11 +79,21 @@ public class ProfileDisplay {
     // Current Sales Table Columns
     */
     
-    TableColumn<ProcessedItem, ImageView> imageColumn;
-    TableColumn<ProcessedItem, String> tradeStateColumn;
-    TableColumn<ProcessedItem, String> typeColumn;
-    TableColumn<ProcessedItem, String> nameColumn;
-    TableColumn<ProcessedItem, String> itemPriceColumn;
+    private TableColumn<ProcessedItem, ImageView> imageColumn;
+    private TableColumn<ProcessedItem, String> tradeStateColumn;
+    private TableColumn<ProcessedItem, String> typeColumn;
+    private TableColumn<ProcessedItem, String> nameColumn;
+    private TableColumn<ProcessedItem, String> itemPriceColumn;
+    
+    /*
+    // Report Table Columns
+    */
+    
+    private TableColumn<Report, String> report_dateColumn;
+    private TableColumn<Report, String> report_typeColumn;
+    private TableColumn<Report, String> report_reasonColumn;
+    
+    
     
     public ProfileDisplay(TarkovTrader trader, Profile profile, boolean allowEdit)
     {
@@ -312,15 +324,40 @@ public class ProfileDisplay {
         currentSalesTable.setItems(FXCollections.observableArrayList(getProcessedItemList(profile.getCurrentSales())));    // Translate the ArrayList<Item> into an Observable List of ProcessedItems
         currentSalesTable.setOnMouseClicked(me -> displaySelectedItem(me));
         
+        
+        // Build Report Table
+        reportsTable = new TableView();
+        reportsTable.setMaxHeight(150);
+        
+        report_dateColumn = new TableColumn<>("Date Reported");
+        report_dateColumn.setMaxWidth(150);
+        report_dateColumn.setMinWidth(150);
+        report_dateColumn.setCellValueFactory(new PropertyValueFactory<>("reportDate"));
+        
+        report_typeColumn = new TableColumn<>("Report Type");
+        report_typeColumn.setMaxWidth(200);
+        report_typeColumn.setMinWidth(200);
+        report_typeColumn.setCellValueFactory(new PropertyValueFactory<>("reportTypeDesc"));
+        
+        report_reasonColumn = new TableColumn<>("Report Reason");
+        report_reasonColumn.setMaxWidth(250);
+        report_reasonColumn.setMinWidth(250);
+        report_reasonColumn.setCellValueFactory(new PropertyValueFactory<>("reportReasonDesc"));
+        
+        reportsTable.getColumns().addAll(report_dateColumn, report_typeColumn, report_reasonColumn);
+        reportsTable.setItems(FXCollections.observableArrayList(profile.getReports()));
+
         // Setup TabPane to switch between current listings and previously completed sales
         TabPane saleTableSelection = new TabPane();
         Tab completedSalesTab = new Tab(String.format("Completed Sales (%d)", profile.getCompletedSales().size()));
         Tab currentSalesTab = new Tab(String.format("Current Sales (%d)", profile.getCurrentSales().size()));
+        Tab reportsTab = new Tab(String.format("Reputation Reports (%d)", profile.getReports().size()));
         
         completedSalesTab.setContent(completedSalesTable);
         currentSalesTab.setContent(currentSalesTable);
+        reportsTab.setContent(reportsTable);
         
-        saleTableSelection.getTabs().addAll(completedSalesTab, currentSalesTab);
+        saleTableSelection.getTabs().addAll(completedSalesTab, currentSalesTab, reportsTab);
         
         
         // Build Sales display area

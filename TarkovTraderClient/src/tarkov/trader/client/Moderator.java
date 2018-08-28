@@ -16,14 +16,16 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import tarkov.trader.objects.Item;
 import tarkov.trader.objects.ItemAction;
@@ -33,6 +35,8 @@ import tarkov.trader.objects.ItemStatusModRequest;
 import tarkov.trader.objects.ProcessedItem;
 import tarkov.trader.objects.Profile;
 import tarkov.trader.objects.ProfileRequest;
+import tarkov.trader.objects.Report;
+import tarkov.trader.objects.ReportType;
 
 /**
  *
@@ -57,7 +61,7 @@ public class Moderator {
     private Button returnButton;
     private Button acceptRequestButton;
     private Button declineRequestButton;
-    private Button reportRequestButton;
+    private Button reportSaleButton;
     private Button removeRequestButton;
     private Button removeBuyItemButton;
     private TableView sellingTable;
@@ -169,10 +173,10 @@ public class Moderator {
         declineRequestButton.setTooltip(new Tooltip("Decline if the user did not buy the item."));
         declineRequestButton.setOnAction(e -> markSaleRequest(ItemStatus.DECLINED));
         
-        reportRequestButton = new Button("Report Sale");
-        reportRequestButton.setGraphic(resourceLoader.getBigFlagIcon());
-        reportRequestButton.setTooltip(new Tooltip("Report if scam or incident occured."));
-        reportRequestButton.setOnAction(e -> markSaleRequest(null));
+        reportSaleButton = new Button("Report Sale");
+        reportSaleButton.setGraphic(resourceLoader.getBigFlagIcon());
+        reportSaleButton.setTooltip(new Tooltip("Report if scam or incident occured."));
+        reportSaleButton.setOnAction(e -> buildReport());
         
         removeRequestButton = new Button("Remove Request");
         removeRequestButton.setGraphic(resourceLoader.getDeleteIcon());
@@ -259,8 +263,8 @@ public class Moderator {
         
         itemStatusColumn = new TableColumn<>("Status");
         itemStatusColumn.setCellValueFactory(new PropertyValueFactory<>("itemStatusDesc"));
-        itemStatusColumn.setMinWidth(120);
-        itemStatusColumn.setMaxWidth(120);
+        itemStatusColumn.setMinWidth(150);
+        itemStatusColumn.setMaxWidth(150);
         
         requestedUserColumn = new TableColumn<>("Requested By");
         requestedUserColumn.setCellValueFactory(new PropertyValueFactory<>("requestedUser"));
@@ -337,13 +341,13 @@ public class Moderator {
             {
                 buyingTable.getColumns().addAll(imageColumn, itemStatusColumn, nameColumn, priceColumn, ignColumn, timezoneColumn);
                 buttonBox.getChildren().clear();
-                buttonBox.getChildren().addAll(clearFiltersButton, removeBuyItemButton);
+                buttonBox.getChildren().addAll(clearFiltersButton, removeBuyItemButton, reportSaleButton);
             }
             else if (newSelection == requestsTab)
             {
                 requestsTable.getColumns().addAll(imageColumn, requestedUserColumn, itemStatusColumn, nameColumn, priceColumn);
                 buttonBox.getChildren().clear();
-                buttonBox.getChildren().addAll(clearFiltersButton, acceptRequestButton, declineRequestButton, reportRequestButton, removeRequestButton);
+                buttonBox.getChildren().addAll(clearFiltersButton, acceptRequestButton, declineRequestButton, reportSaleButton, removeRequestButton);
             }
             
         });
@@ -420,8 +424,6 @@ public class Moderator {
     {
         // Called by RequestWorker and passed the ArrayList to process 
         // Calls getItemList to retrieve an OberservableList of processed items for CellValueFactory to fetch data
-        
-        Tab selectedTab = tableSelector.getSelectionModel().getSelectedItem();
         
         sellingTable.setItems(getItemList(getProcessedItemList(profile.getCurrentSales())));
         buyingTable.setItems(getItemList(getProcessedItemList(profile.getBuyList())));
@@ -739,6 +741,117 @@ public class Moderator {
         }
         
         return true;
+    }
+    
+    
+    private void buildReport()
+    {
+        // The item could be in either the buy list or is currently a requested sale
+        // A buyer could report the seller for scamming
+        // Or a seller could report the buyer for scamming
+        
+        Tab selectedTab = tableSelector.getSelectionModel().getSelectedItem();
+        
+        ReportType report_type;
+        ProcessedItem selectedItem;
+        Item itemToReport;
+        
+        if (selectedTab == buyingTab)
+        {
+            // The seller is being reported
+            report_type = ReportType.SELLER;
+            selectedItem = (ProcessedItem)buyingTable.getSelectionModel().getSelectedItem();
+            itemToReport = selectedItem.getItem();
+        }
+        else if (selectedTab == requestsTab)
+        {
+            // The buyer is being reported
+            report_type = ReportType.BUYER;
+            selectedItem = (ProcessedItem)requestsTable.getSelectionModel().getSelectedItem();
+            itemToReport = selectedItem.getItem();
+        }
+        else
+            return;
+        
+        
+        // Build the Report Builder stage
+        Stage reportBuilder = new Stage();
+        
+        Label reportBuilderLabel = new Label("Submit Report");
+        reportBuilderLabel.setAlignment(Pos.CENTER);
+        reportBuilderLabel.setStyle("-fx-underline: true;");
+        
+        Label commentsLabel = new Label("Comments:");
+        commentsLabel.setStyle("-fx-underline: true;");
+        
+        Label warningLabel = new Label("Warning: Submitting a fraudulent report will result in a highly negative remark on your profile.");
+        warningLabel.setWrapText(true);
+        warningLabel.setTextAlignment(TextAlignment.JUSTIFY);
+        
+        Label includeLabel = new Label("It is important to include a detailed comment to fully describe the situation.");
+        includeLabel.setWrapText(true);
+        includeLabel.setTextAlignment(TextAlignment.JUSTIFY);
+        
+        Label usernameToReportLabel = new Label("Reporting:");
+        usernameToReportLabel.setStyle("-fx-underline: true;");
+        
+        Label itemUsernameLabel = new Label();
+        String itemUsername = null;
+        if (report_type == ReportType.BUYER)
+            itemUsername = selectedItem.getRequestedUser();
+        else if (report_type == ReportType.SELLER)
+            itemUsername = itemToReport.getUsername();
+        itemUsernameLabel.setText(itemUsername);
+        
+        TextArea commentsArea = new TextArea();
+        commentsArea.setPrefHeight(125);
+        commentsArea.setWrapText(true);
+        
+        // Submit report to the server
+        Button submit = new Button("Submit");
+        final String userToReport = itemUsername;
+        submit.setOnAction(e -> {
+            
+            final Report newReport = new Report(TarkovTrader.username, userToReport, commentsArea.getText(), itemToReport, ReportType.BUYER);
+            if (!worker.sendForm(newReport))
+                Alert.display(null, "Failed to send report.");
+            else
+                reportBuilder.close();
+            
+        });
+        // End
+        
+        Button cancel = new Button("Cancel");
+        cancel.setOnAction(e -> reportBuilder.close());
+        
+        VBox upperDisplay = new VBox(10);
+        upperDisplay.setAlignment(Pos.CENTER);
+        upperDisplay.getChildren().addAll(resourceLoader.getLogo(), reportBuilderLabel, warningLabel, includeLabel);
+        
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(15);
+        grid.setPadding(new Insets(10));
+        GridPane.setConstraints(usernameToReportLabel, 0, 0);
+        GridPane.setConstraints(itemUsernameLabel, 1, 0);
+        GridPane.setConstraints(commentsLabel, 0, 1);
+        GridPane.setConstraints(commentsArea, 1, 1);
+        
+        grid.getChildren().addAll(usernameToReportLabel, itemUsernameLabel, commentsLabel, commentsArea);
+        
+        HBox rbButtonBox = new HBox(25);
+        rbButtonBox.setAlignment(Pos.CENTER);
+        rbButtonBox.setPadding(new Insets(5,0,13,0));
+        rbButtonBox.getChildren().addAll(submit, cancel);
+        
+        VBox root = new VBox(7);
+        root.getChildren().addAll(upperDisplay, grid, rbButtonBox);
+        root.setPadding(new Insets(0,10,10,10));
+        
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(this.getClass().getResource("veneno.css").toExternalForm());
+        reportBuilder.setScene(scene);
+        reportBuilder.show();
     }
     
     

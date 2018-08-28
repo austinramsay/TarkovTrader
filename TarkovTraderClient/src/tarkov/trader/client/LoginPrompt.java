@@ -3,11 +3,15 @@ package tarkov.trader.client;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.*;
 import javax.xml.bind.DatatypeConverter;
@@ -34,6 +38,8 @@ public class LoginPrompt {
     public Button loginButton;
     public Button cancelButton;
     public Button newAccountButton;
+    private CheckBox rememberMe;
+    private CheckBox autoLogin;
     
     
     public LoginPrompt(TarkovTrader tarkovtrader)
@@ -49,13 +55,15 @@ public class LoginPrompt {
         LoginPrompt.acknowledged = false;
         loginStage = new Stage();
         
-        
         nameLabel = new Label("Username:");
         passLabel = new Label("Password:");
         usernameInput = new TextField();
         passwordInput = new PasswordField();
         passwordInput.setPromptText("Password");
-        passwordInput.setOnAction(e -> submit());
+        passwordInput.setOnKeyPressed(e -> { 
+            if (e.getCode() == KeyCode.ENTER)
+                submit();
+        });
         
         loginButton = new Button("Login");
         loginButton.setOnAction(e -> submit());
@@ -66,8 +74,38 @@ public class LoginPrompt {
         newAccountButton = new Button("New account");
         newAccountButton.setOnAction(e -> launchNewAccountStage());
         
+        rememberMe = new CheckBox("Remember Me");
+        autoLogin = new CheckBox("Auto Login");
         
-        // upperdisplay houses Tarkov Trader logo
+        // Update fields according to saved preferences
+        if (TarkovTrader.userPrefs.get(Preferences.USERNAME) != null)
+            usernameInput.setText(TarkovTrader.userPrefs.get(Preferences.USERNAME));
+        if (TarkovTrader.userPrefs.get(Preferences.PASSWORD) != null)
+            passwordInput.setText(TarkovTrader.userPrefs.get(Preferences.PASSWORD));
+        String rememberMeValue = TarkovTrader.userPrefs.get(Preferences.REMEMBER_ME);
+        String autoLoginValue = TarkovTrader.userPrefs.get(Preferences.AUTO_LOGIN);
+        if (rememberMeValue.equals("on"))
+            rememberMe.setSelected(true);
+        if (autoLoginValue.equals("on"))
+            autoLogin.setSelected(true);
+        
+        
+        rememberMe.selectedProperty().addListener((obs, oldValue, newValue) -> {
+            if (autoLogin.isSelected())
+                rememberMe.setSelected(true);
+        });
+        
+        
+        autoLogin.selectedProperty().addListener((obs, oldValue, newValue) -> { 
+            if (newValue == true)
+            {
+                rememberMe.setSelected(true);
+                Alert.display(null, "You can disable auto login in the future under\nthe 'Tarkov Trader' menu once logged in.");
+            }
+        });
+        
+        
+        // Upper display houses Tarkov Trader logo
         HBox upperDisplay = new HBox();
         upperDisplay.setAlignment(Pos.CENTER);
         upperDisplay.getChildren().add(resourceLoader.getLogo());
@@ -87,7 +125,15 @@ public class LoginPrompt {
         // End grid
         
         
-        // lowerdisplay houses the 3 buttons on the bottom of the login prompt
+        // Checkbox display houses 'Remember Me', 'Auto Login' options
+        HBox checkboxDisplay = new HBox(10);
+        checkboxDisplay.setAlignment(Pos.CENTER);
+        checkboxDisplay.getChildren().addAll(rememberMe, autoLogin);
+        if (TarkovTrader.userPrefs.get(Preferences.REMEMBER_ME).equals("on"))
+            rememberMe.setSelected(true);
+        
+        
+        // Lower display houses the 3 buttons on the bottom of the login prompt
         HBox lowerDisplay = new HBox(10); 
         lowerDisplay.setAlignment(Pos.CENTER);
         lowerDisplay.getChildren().addAll(loginButton, newAccountButton, cancelButton);
@@ -96,7 +142,7 @@ public class LoginPrompt {
         // Main scene layout is VBox with 12 spacing and 20 padding all around
         VBox layout = new VBox(12);
         layout.setPadding(new Insets(0,0,10,0));
-        layout.getChildren().addAll(upperDisplay, grid, lowerDisplay);
+        layout.getChildren().addAll(upperDisplay, grid, checkboxDisplay, lowerDisplay);
         
         
         Scene scene = new Scene(layout);
@@ -106,8 +152,15 @@ public class LoginPrompt {
         loginStage.getIcons().add(resourceLoader.getIcon());
         loginStage.setResizable(false);
         loginStage.setScene(scene);
-        loginStage.show();
         
+        if (TarkovTrader.userPrefs.get(Preferences.AUTO_LOGIN).equals("on"))
+        {
+            submit();
+        }
+        else
+        {
+            loginStage.show();
+        }
     }
     
     
@@ -166,6 +219,51 @@ public class LoginPrompt {
     
     private void submit()
     {
+        // Check if any preferences were change
+        boolean rememberMeIsEnabled = rememberMe.isSelected();
+        boolean autoLoginIsEnabled = autoLogin.isSelected();
+        
+        String prefsValue = null;
+        if (rememberMeIsEnabled)
+            prefsValue = "on";
+        else
+            prefsValue = "off";
+        
+        // Check if the login credential preferences match with the current, if the username doesn't match, or the password doesn't match
+        // If something does not equal, something has changed and we need to update
+        if (!TarkovTrader.userPrefs.get(Preferences.USERNAME).equals(usernameInput.getText()) ||
+            !TarkovTrader.userPrefs.get(Preferences.PASSWORD).equals(passwordInput.getText()) ||
+            !prefsValue.equals(TarkovTrader.userPrefs.get(Preferences.REMEMBER_ME)))
+        {
+            if (rememberMeIsEnabled)
+            {
+                // The user changed from NO to YES for 'Remember Me'
+                TarkovTrader.updatePrefs(Preferences.REMEMBER_ME, prefsValue);
+                TarkovTrader.updatePrefs(Preferences.USERNAME, usernameInput.getText());
+                TarkovTrader.updatePrefs(Preferences.PASSWORD, passwordInput.getText());
+            }
+            else
+            {
+                // The user changed from YES to NO for 'Remember Me'
+                TarkovTrader.updatePrefs(Preferences.REMEMBER_ME, prefsValue);
+                TarkovTrader.updatePrefs(Preferences.USERNAME, null);
+                TarkovTrader.updatePrefs(Preferences.PASSWORD, null);
+            }
+        }
+        
+        prefsValue = null;
+        if (autoLoginIsEnabled)
+            prefsValue = "on";
+        else
+            prefsValue = "off";
+        
+        // Check if the auto login preference matches the checkbox
+        // This will only ever happen if the user switches from OFF -> ON
+        // If auto login is enabled, they won't ever have the chance to see the login prompt to disable this option, it must be done from the main UI
+        if (!TarkovTrader.userPrefs.get(Preferences.AUTO_LOGIN).equals(prefsValue))
+            TarkovTrader.updatePrefs(Preferences.AUTO_LOGIN, prefsValue);
+        
+        // Attempt authentication
         if (verifyFormIntegrity())
             attemptAuthentication();
         else

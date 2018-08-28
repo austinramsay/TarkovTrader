@@ -24,6 +24,7 @@ public class NotificationManager {
     private final String newSaleRequestAlert = "New sale request from %s.";
     private final String saleRequestUpdateAlert = "Sale request acknowledged from %s.";
     private final String reputationUpdateAlert = "Profile reputation updated.";
+    private final String reportAlert = "Report submitted against you from %s. Pending approval.";
     
     private boolean toFlagMessages;
     
@@ -108,6 +109,11 @@ public class NotificationManager {
             case "repupdate":
                 if (shouldNotify)
                     notificationQueue.add(reputationUpdateAlert);
+                break;
+                
+            case "report":
+                if (shouldNotify)
+                    notificationQueue.add(String.format(reportAlert, notification.getOriginUsername()));
                 break;
         }
         
