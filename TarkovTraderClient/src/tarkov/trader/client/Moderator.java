@@ -614,6 +614,8 @@ public class Moderator {
     
     private boolean requestSuspension()
     {
+        // Request to temporarily hide the item from public browser (sale in progress?)
+        
         if (sellingTable.getSelectionModel().isEmpty())
         {
             // There is no listing to be deleted
@@ -622,16 +624,15 @@ public class Moderator {
         }
 
         ProcessedItem selectedItem = (ProcessedItem)sellingTable.getSelectionModel().getSelectedItem();
-        Item itemToModify = selectedItem.getItem();
-        Item preModifiedItem = itemToModify;
+        Item itemToModify = selectedItem.getItem(); 
         
-        boolean toSuspend = !itemToModify.getSuspensionState();
+        ItemModificationRequest suspendRequest = new ItemModificationRequest("suspend", buildFilterFlags(), itemToModify, null);
         
-        preModifiedItem.setSuspended(toSuspend);
-        
-        ItemModificationRequest suspendRequest = new ItemModificationRequest("suspend", buildFilterFlags(), itemToModify, preModifiedItem);
-        
-        worker.sendForm(suspendRequest);
+        if (!worker.sendForm(suspendRequest))
+        {
+            Platform.runLater(() -> Alert.display(null, "Failed to send request."));
+            return false;
+        }
         
         return true;
     }

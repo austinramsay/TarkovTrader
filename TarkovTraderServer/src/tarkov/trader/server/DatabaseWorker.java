@@ -21,6 +21,7 @@ import tarkov.trader.objects.LoginForm;
 import tarkov.trader.objects.NewAccountForm;
 import tarkov.trader.objects.Notification;
 import tarkov.trader.objects.Profile;
+import tarkov.trader.objects.Report;
 
 // DatabaseWorker class 
 // Handles all database work
@@ -721,6 +722,9 @@ public class DatabaseWorker
         PreparedStatement statement = null;
         ResultSet result = null;
         
+        
+        // Is the user attempting to modify an item of their own?
+        // This is just to double check in case some bug allowed a user to modify someone else's item
         if (!itemModRequest.getItemToModify().getUsername().equals(compareUsername))
         {
             TarkovTraderServer.broadcast("DBWorker: Failed to authenticate matching user to modify item. Item username is " + itemUsername + " compared to attempted user " + compareUsername + ".");
@@ -728,7 +732,9 @@ public class DatabaseWorker
             return false;
         }
         
+        
         // Pull the client's profile to update after said modification
+        // Verify the profile is casted correctly (not null)
         Profile currentProfile = getProfile(itemUsername);
         if (currentProfile == null)
         {
@@ -737,13 +743,24 @@ public class DatabaseWorker
             return false;
         }
         
-        if (itemToModify.getItemStatus() != ItemStatus.OPEN)
-        {
-            TarkovTraderServer.broadcast("DBWorker: Item modification not permitted. Item status is not 'open' (" + itemToModify.getItemStatus().getReason() +")" + ".");
-            communicator.sendAlert("Modification not permitted. Item status not 'open'.");
-            return false;
-        }
         
+        // If an item has been reported, lock down changes to the item (NOT permitted now)
+        // A user should not be able to delete an item if a report is leaned against it
+        // Send failure message to user and server if modification is not permitted
+        for (Report report : TarkovTraderServer.reportLog.getReports())
+        {
+            Item reportedItem = report.getReportedItem();
+            if (reportedItem.equals(itemToModify))
+            {
+                TarkovTraderServer.broadcast("DBWorker: Item modification not permitted. Item has report pending.");
+                communicator.sendAlert("Item has been reported, changes not permitted.");
+                return false;
+            }
+        }
+
+        
+        // At this point we can proceed with the modification request
+        // There should be no reason to not allow changes 
         try 
         {
             dbConnection = getDBconnection();
@@ -836,24 +853,28 @@ public class DatabaseWorker
                     
                 case "suspend":
                     
+                    // Change the item suspension before updating
+                    boolean toSuspend = !itemToModify.getSuspensionState();
+                    itemToModify.setSuspended(toSuspend);
+                    
                     command = "UPDATE items SET ItemObject=? WHERE State LIKE ? AND Type LIKE ? AND Name LIKE ? AND Ign LIKE ? AND Username LIKE ?;";
                     
                     // TODO TODO TODO COMPARE DATE OF STORED ITEM TO REQUESTED ITEM
                     // TODO TODO TODO TODO
                     statement = dbConnection.prepareStatement(command);
-                    statement.setObject(1, preModifiedItem);
-                    statement.setString(2, preModifiedItem.getTradeState());
-                    statement.setString(3, preModifiedItem.getItemType());
-                    statement.setString(4, preModifiedItem.getName());
-                    statement.setString(5, preModifiedItem.getIgn());
-                    statement.setString(6, preModifiedItem.getUsername());
+                    statement.setObject(1, itemToModify);
+                    statement.setString(2, itemToModify.getTradeState());
+                    statement.setString(3, itemToModify.getItemType());
+                    statement.setString(4, itemToModify.getName());
+                    statement.setString(5, itemToModify.getIgn());
+                    statement.setString(6, itemToModify.getUsername());
                     int suspendCount = statement.executeUpdate();
                     
-                    boolean isSuspended = preModifiedItem.getSuspensionState();
+                    boolean isSuspended = itemToModify.getSuspensionState();
                     
                     // Sync the client's profile
                     currentProfile.removeItem(itemToModify);
-                    currentProfile.appendItem(preModifiedItem);
+                    currentProfile.appendItem(itemToModify);
                     updateProfile(currentProfile, itemUsername);
                     // Done
                     

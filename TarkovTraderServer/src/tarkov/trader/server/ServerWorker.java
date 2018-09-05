@@ -10,10 +10,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import javax.swing.JOptionPane;
 import tarkov.trader.objects.Item;
+import tarkov.trader.objects.Notification;
+import tarkov.trader.objects.NotificationType;
 import tarkov.trader.objects.Profile;
 import tarkov.trader.objects.Report;
-import tarkov.trader.objects.ReportType;
 
 /**
  *
@@ -21,6 +23,8 @@ import tarkov.trader.objects.ReportType;
  */
 
 public class ServerWorker {
+    
+    private final String USERNAME = "Tarkov Trader";
     
     public Connection getDBconnection()
     {
@@ -374,24 +378,244 @@ public class ServerWorker {
     // Reports
     */
         
-    private void acceptReport(Report report)
+    public void acceptReport(Report report)
     {
         // Accepting a report
         // We need to get the reported users profile, append the report to their profile, and finally update in the database
         String reportedUser = report.getUserToReport();
-        ReportType type = report.getReportType();
         Profile reportedUserProfile = getProfile(reportedUser);
+        
+        
+        // Did we get the user profile successfully?
+        if (reportedUserProfile == null)
+        {
+            // Failed to retrieve the reported user profile
+            JOptionPane.showMessageDialog(null, "Failed to append report. Profile null.");
+            return;
+        }
+        
+        
+        // Append the report to the profile and if failed, exit the method
+        if (!reportedUserProfile.appendReport(report))
+        {
+            JOptionPane.showMessageDialog(null, "Failed to append report. Already exists?");
+            return;
+        }
+        
+        
+        // The profile is now ready to be updated
+        // Update the profile in the database
+        if (!updateProfile(reportedUserProfile, reportedUser))
+        {
+            JOptionPane.showMessageDialog(null, "Report was appended, but profile update failed.", "Failed", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        
+        // TODO TODO TODO
+        // REMOVE THE SALE REQUEST / BUY FROM EACH USERS PROFILE
+        
+        
+        // Now we can remove the report from the report log, no longer needed
+        if (!TarkovTraderServer.reportLog.removeReport(report))
+        {
+            JOptionPane.showMessageDialog(null, "Profile was updated, but failed to remove from report log.", "Failed", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        
+        // At this point, all processes are complete
+        JOptionPane.showMessageDialog(null, "Report successfully accepted.", "Success", JOptionPane.INFORMATION_MESSAGE);
     }
     
     
-    private void declineReport(Report report)
+    public void declineReport(Report report)
     {
         // Declining a report
-        // We need to get the reported users profile, append the report to their profile, and finally update it in the database
-        
         
     }
     
     // End Reports
     
+    
+    
+    /*
+    // Notifications
+    */
+    
+    private void sendNotification(NotificationType type, String sendNotificationTo, String displayOnNotify)
+    {
+        String type_flag = null;
+        switch(type)
+        {
+            case CHAT:
+                type_flag = "chat";
+                break;
+                
+            case REPUTATION:
+                type_flag = "repupdate";
+                break; 
+                
+            case REPORT:
+                type_flag = "report";
+                break;
+                
+            case SALE_REQUEST_UPDATE:
+                type_flag = "salerequestupdate";
+                break;
+                
+            case NEW_SALE_REQUEST:
+                type_flag = "newsalerequest";
+                break;
+                
+            case MESSAGE:
+                type_flag = "message";
+                break;
+        }
+        
+        // Build new notification
+        Notification newNotification = new Notification(type_flag, displayOnNotify);
+        
+        
+        // If the notification is for a message, we need to set the count - because this is a live notification we can set to 1
+        if (type == NotificationType.MESSAGE)
+            newNotification.setCount(1);
+        
+        
+        // Distribute newly built notification
+        if(isOnline(sendNotificationTo))
+        {
+            // The intended user is NOT this user
+            // User is online, we'll send a notification now through their worker
+            RequestWorker destinationWorker = TarkovTraderServer.authenticatedUsers.get(sendNotificationTo);
+            destinationWorker.sendForm(newNotification);             
+        }
+        else
+        {
+            // User is offline, push to the intended user's database
+            ArrayList<Notification> destinationNotifications = getNotifications(sendNotificationTo);                                // Get the current destination user's notifications list
+            
+            ArrayList<Notification> destinationUpdatedNotifications = addNotification(destinationNotifications, type_flag, displayOnNotify);    // Append our new chat notification 
+            
+            insertNotifications(sendNotificationTo, destinationUpdatedNotifications);                                               // Update the list for the user's DB            
+        }
+    }
+ 
+    
+    // Append a notification to a users notification list
+    private ArrayList<Notification> addNotification(ArrayList<Notification> notificationsList, String notificationType, String displayOnNotify)
+    {
+        // We are using this method when creating a new notification to add to another user's list
+        // This method finds related notifications and modifies it (For example, a user sends multiple messages - we can increase the message count rather than creating multiple notifications)
+        // Or creates one if needed
+        // Usually used when inserting back into another users DB 
+        
+        Notification tempNotification = null;
+        
+        for (Notification notification : notificationsList)
+        {
+            // Look through the current notification list
+            // If we find a notification that matches the username and type of notification, remove it first so we don't end up with multiples
+            if (notification.getOriginUsername() != null && notification.getOriginUsername().equals(displayOnNotify) && notification.getNotificationType().equals(notificationType))
+            {
+                tempNotification = notification;
+                notificationsList.remove(notification);
+                break;
+            }
+        }
+        
+        // No matching notification found
+        if (tempNotification == null)
+        {
+            // No existing notification found, create a new one
+            tempNotification = new Notification(notificationType, displayOnNotify);
+        }
+        
+        // There was a matching notification found for a message from a user, increase the message count instead of creating duplicate
+        if (notificationType.equals("message"))
+        {
+            int count = tempNotification.getCount();
+            count++;
+            tempNotification.setCount(count);
+        }
+        
+        // Finally, add back into the arraylist to be returned
+        notificationsList.add(tempNotification);
+        
+        return notificationsList;
+    }    
+    
+    
+    // Get client notifications
+    public ArrayList<Notification> getNotifications(String username)
+    {
+        String command = "SELECT Notifications FROM notifications WHERE username=?";
+        String columnName = "Notifications";
+        String onlyParameter = username;
+        
+        byte[] notificationsBytes = simpleBlobQuery(command, columnName, onlyParameter);
+        
+        if (notificationsBytes == null)
+            return null;
+        
+        Object notificationsObject = convertBlobToObject(notificationsBytes);
+        
+        return (ArrayList<Notification>)notificationsObject;
+    }
+
+    
+    // Update the notifications list for a client
+    public boolean insertNotifications(String username, ArrayList<Notification> notificationsList)
+    {
+        String command = "UPDATE notifications SET Notifications=? WHERE Username=?";
+        
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
+        
+        try 
+        {
+            dbConnection = getDBconnection();
+            statement = dbConnection.prepareStatement(command);   
+            
+            statement.setObject(1, notificationsList);            
+            statement.setString(2, username);
+            
+            statement.executeUpdate();
+            
+            return true;
+        }
+        catch (SQLException e)
+        {
+            String error = "Server Worker: New notifications insert failed. Error: " + e.getMessage();
+            TarkovTraderServer.broadcast(error);
+            return false;
+        }
+        finally 
+        {
+            try {
+                if (statement != null)
+                    statement.close();
+                if (dbConnection != null)
+                    dbConnection.close();
+            } catch (SQLException e) { TarkovTraderServer.broadcast("Server worker: Failed to close resources after inserting notifications."); }
+        }        
+    }        
+    
+    // End notifications
+    
+    
+    
+    /*
+    // Client Connection Handling
+    */
+    
+    private boolean isOnline(String username)
+    {
+        if (TarkovTraderServer.authenticatedUsers.containsKey(username))
+            return true;
+        else
+            return false;
+    }    
+    
+    // End client connection handling
 }

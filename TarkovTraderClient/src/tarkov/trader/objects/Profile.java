@@ -109,50 +109,6 @@ public class Profile implements Serializable {
         this.registrationDate = dateFormat.format(new Date());
     }
     
-    public void appendSale(Sale sale)
-    {
-        if (!completedSales.contains(sale))
-        {
-            completedSales.add(sale);
-            resolvePoints();
-        }
-        else
-            System.out.println("Profile: Sale already exists for profile " + username + ".");
-    }
-    
-    public void removeSale(Sale sale)
-    {
-        if (completedSales.contains(sale))
-        {
-            completedSales.remove(sale);
-            resolvePoints();
-        }
-        else
-            System.out.println("Profile: Sale does not exist for profile " + username + ".");
-    }
-    
-    public void appendReport(Report report)
-    {
-        if (!reports.contains(report))
-        {
-            reports.add(report);
-            resolvePoints();
-        }
-        else
-            System.out.println("Profile: Report already exists for profile " + username + ".");
-    }
-    
-    public void removeReport(Report report)
-    {
-        if (reports.contains(report))
-        {
-            reports.remove(report);
-            resolvePoints();
-        }
-        else
-            System.out.println("Profile: Report does not exist for profile " + username + ".");
-    }
-    
     public void setBuyList(ArrayList<Item> buyList)
     {
         this.buyList = buyList;
@@ -178,74 +134,166 @@ public class Profile implements Serializable {
         this.reports = reports;
     }
     
-    public void appendItem(Item item)
+    public boolean appendItem(Item item)
     {
         if (!currentSales.contains(item))
+        {
             currentSales.add(item);
+            return true;
+        }
         else
             System.out.println("Profile: Item already exists in current sales for " + username + ".");
+        
+        return false;
     }
     
-    public void removeItem(Item item)
+    public boolean removeItem(Item item)
     {
         if (currentSales.contains(item))
+        {
             currentSales.remove(item);
+            return true;
+        }
         else
             System.out.println("Profile: Item does not exist for profile " + username + ".");
+        
+        return false;
     }
     
-    public void appendBuyItem(Item item)
+    public boolean appendSale(Sale sale)
+    {
+        if (!completedSales.contains(sale))
+        {
+            completedSales.add(sale);
+            resolvePoints();
+            return true;
+        }
+        else
+            System.out.println("Profile: Sale already exists for profile " + username + ".");
+        
+        return false;
+    }
+    
+    public boolean removeSale(Sale sale)
+    {
+        if (completedSales.contains(sale))
+        {
+            completedSales.remove(sale);
+            resolvePoints();
+            return true;
+        }
+        else
+            System.out.println("Profile: Sale does not exist for profile " + username + ".");
+        
+        return false;
+    }
+    
+    public boolean appendReport(Report report)
+    {
+        if (!reports.contains(report))
+        {
+            reports.add(report);
+            resolvePoints();
+            return true;
+        }
+        else
+            System.out.println("Profile: Report already exists for profile " + username + ".");
+        
+        return false;
+    }
+    
+    public boolean removeReport(Report report)
+    {
+        if (reports.contains(report))
+        {
+            reports.remove(report);
+            resolvePoints();
+            return true;
+        }
+        else
+            System.out.println("Profile: Report does not exist for profile " + username + ".");
+        
+        return false;
+    }    
+    
+    public boolean appendBuyItem(Item item)
     {
         if (!buyList.contains(item))
+        {
             buyList.add(item);
+            return true;
+        }
         else
             System.out.println("Profile: Item already exists for profile " + username + ".");
+            
+        return false;
     }
     
-    public void removeBuyItem(Item item)
+    public boolean removeBuyItem(Item item)
     {
         if (buyList.contains(item))
+        {
             buyList.remove(item);
+            return true;
+        }
         else
             System.out.println("Profile: Item does not exist for profile " + username + ".");
+        
+        return false;
     }
     
-    public void appendRequestedSale(Item item)
+    public boolean appendRequestedSale(Item item)
     {
         if (!requestedSales.contains(item))
+        {
             requestedSales.add(item);
+            return true;
+        }
         else 
             System.out.println("Profile: Requested sale already exists for profile " + username + ".");
+        
+        return false;
     }
     
-    public void removeRequestedSale(Item item)
+    public boolean removeRequestedSale(Item item)
     {
         if (requestedSales.contains(item))
+        {
             requestedSales.remove(item);
+            return true;
+        }
         else
             System.out.println("Profile: Requested sale does not exist for profile " + username + ".");
+        
+        return false;
     }
     
-    public void appendFlag(AccountFlag flag)
+    public boolean appendFlag(AccountFlag flag)
     {
         if (!accountFlags.contains(flag))
         {
             accountFlags.add(flag);
             resolvePoints();
+            return true;
         }
         else
             System.out.println("Profile: Account flag '" + flag + "' already exists for " + username + ".");
+        
+        return false;
     }
     
-    public void removeFlag(AccountFlag flag)
+    public boolean removeFlag(AccountFlag flag)
     {
         if (accountFlags.contains(flag))
         {
             accountFlags.remove(flag);
             resolvePoints();
+            return true;
         }
         else
             System.out.println("Profile: Account flag '" + flag + "' does not exist for " + username + ".");
+        
+        return false;
     }
     
     
@@ -309,11 +357,11 @@ public class Profile implements Serializable {
                     repPoints -= 30;
                     break;
                     
-                case PURCHASE_SCAM:
+                case BUYER_SCAM:
                     repPoints -= 200;
                     break;
                     
-                case SELL_SCAM:
+                case SELLER_SCAM:
                     repPoints -= 200;
                     break;
             }

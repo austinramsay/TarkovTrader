@@ -951,7 +951,7 @@ public class RequestWorker implements Runnable {
     private void processProfileRequest(ProfileRequest request)
     {
         Profile matchingProfile = dbWorker.getProfile(request.getUsername());
-        
+        System.out.println("Profile: " + matchingProfile.getUsername());
         if (matchingProfile == null)
             return;
         
@@ -1037,17 +1037,22 @@ public class RequestWorker implements Runnable {
     {
         Item item = request.getItem();
         
-        switch(item.getItemStatus())
+        
+        // This should never be checked if we are adding an item to a buy list, only if we are attempting to modify an item's status or remove it from a buy list
+        if (request.getAction() != ItemAction.MOVE_TO_BUY_LIST)
         {
-            case AWAITING_RESPONSE:
-                communicator.sendAlert("The other user has not yet replied. Modification not permitted.");
-                TarkovTraderServer.broadcast("Request Worker: Item modification not permitted (" + clientUsername + ")");
-                return;
+            switch(item.getItemStatus())
+            {
+                case AWAITING_RESPONSE:
+                    communicator.sendAlert("The other user has not yet replied. Modification not permitted.");
+                    TarkovTraderServer.broadcast("Request Worker: Item modification not permitted (" + clientUsername + ")");
+                    return;
                 
-            case REPORT_PENDING:
-                communicator.sendAlert("Report status pending. Modification not permitted.");
-                TarkovTraderServer.broadcast("Request Worker: Item modification not permitted (" + clientUsername + ")");
-                return;
+                case REPORT_PENDING:
+                    communicator.sendAlert("Report status pending. Modification not permitted.");
+                    TarkovTraderServer.broadcast("Request Worker: Item modification not permitted (" + clientUsername + ")");
+                    return;
+            }
         }
         
         
@@ -1062,7 +1067,7 @@ public class RequestWorker implements Runnable {
         {
             item.setItemStatus(request.getStatus());
         }
-        else
+        else // Item's status is equal to the requests status
         {
             TarkovTraderServer.broadcast("Request Worker: Cannot change item status multiple times.");
             communicator.sendAlert("This item's status has already been changed.");
@@ -1078,9 +1083,17 @@ public class RequestWorker implements Runnable {
         // The end user's profile will be updated in the database, 
         if (request.getAction() == ItemAction.MOVE_TO_BUY_LIST)
         {
-            // This client requested an add to buy list, the seller will need to know this username so we will set the requested user as 'this'
-            item.setRequestedUser(clientUsername);
+            // The client side application should disable the method to add a user's own item to their buy list
+            // But we will double check here 
+            if (item.getUsername().equals(clientUsername))
+            {
+                TarkovTraderServer.broadcast("Request Worker: Client side failure to disable move to buy list for own item. Request denied.");
+                communicator.sendAlert("Adding your own item to your buy list is not permitted.");
+                return;
+            }
             
+            
+            // Check if the user has already added this to their profile 
             if (currentProfile.getBuyList().contains(item))
             {
                 TarkovTraderServer.broadcast("Request Worker: Failed to add item to buy list for " + clientUsername + ". Already exists.");
@@ -1088,6 +1101,13 @@ public class RequestWorker implements Runnable {
                 return;
             }
             
+            
+            // WARNING: this needs to be done before comparing to the item in a users buy list (equals method compares requested user)
+            // This client requested an add to buy list, the seller will need to know this username so we will set the requested user as 'this'
+            item.setRequestedUser(clientUsername);
+            
+            
+            // Attempt to add the buy item
             if (appendBuyItem(item))
             {
                 // Successfully added to our current profile
@@ -1102,9 +1122,22 @@ public class RequestWorker implements Runnable {
                 communicator.sendAlert("Added item to buy list. '" + item.getUsername() + "' was notified.");           
                 return;
             }
+            else
+            {
+                // Failed to add to profile
+                // The item likely does not exist in the profile, because this was checked prior to attempting to append it
+                // Most likely, an exception occured (null arraylist?)
+                
+                TarkovTraderServer.broadcast("Request Worker: Failed to add item to buy list for " + clientUsername + ".");
+                communicator.sendAlert("Failed to add item to buy list.");
+                return;
+            }
         }
         
-        if (request.getAction() == ItemAction.MODIFY_STATUS)
+        
+        // This will be a user asking to accept or decline the sale
+        // A seller will request this action
+        else if (request.getAction() == ItemAction.MODIFY_STATUS)
         {
             // Status has been already modified at start of method
             // We just need to process the new status accordingly
@@ -1157,7 +1190,10 @@ public class RequestWorker implements Runnable {
             syncProfileWithModFlag();
         }
         
-        if (request.getAction() == ItemAction.REMOVE_FROM_REQUESTS)
+        
+        // The user wants to remove this item from their requested sales list
+        // This will be the seller asking for this action
+        else if (request.getAction() == ItemAction.REMOVE_FROM_REQUESTS)
         {            
             if (currentProfile.getRequestedSales().contains(item))
             {
@@ -1174,7 +1210,9 @@ public class RequestWorker implements Runnable {
             syncProfileWithModFlag();
         }
         
-        if (request.getAction() == ItemAction.REMOVE_FROM_BUY_LIST)
+        // The user wants to remove this item from their buy list
+        // This will be a buyer asking for this action
+        else if (request.getAction() == ItemAction.REMOVE_FROM_BUY_LIST)
         {   
             if (currentProfile.getBuyList().contains(item))
             {
@@ -1189,6 +1227,12 @@ public class RequestWorker implements Runnable {
                 TarkovTraderServer.broadcast("Request Worker: Failed to remove buy item for " + clientUsername + ".");
             }
             syncProfileWithModFlag();
+        }
+        
+        else
+        {
+            TarkovTraderServer.broadcast("Request Worker: Unknown modification request received from " + clientUsername + ".");
+            communicator.sendAlert("Unknown modification request received.");
         }
     }
     

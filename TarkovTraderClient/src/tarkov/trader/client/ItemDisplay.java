@@ -180,6 +180,7 @@ public class ItemDisplay {
         if (TarkovTrader.username.equals(item.getUsername()))
         {
             // If the posting's username is the client, disable all action buttons
+            addToBuyListButton.setDisable(true);
             contactButton.setDisable(true); 
             flagButton.setDisable(true);
         }
@@ -326,7 +327,7 @@ public class ItemDisplay {
     // Send request to the server
     private void addItemToBuyList()
     {
-        ItemStatusModRequest addRequest = new ItemStatusModRequest(ItemAction.MOVE_TO_BUY_LIST, ItemStatus.AWAITING_RESPONSE, item.getItem());
+        ItemStatusModRequest addRequest = new ItemStatusModRequest(ItemAction.MOVE_TO_BUY_LIST, null, item.getItem());
         
         if (!worker.sendForm(addRequest))
             Platform.runLater(() -> Alert.display(null, "Failed to send request."));
@@ -335,7 +336,7 @@ public class ItemDisplay {
     
     private void removeItemFromBuyList()
     {
-        ItemStatusModRequest removeRequest = new ItemStatusModRequest(ItemAction.REMOVE_FROM_BUY_LIST, ItemStatus.OPEN, item.getItem());
+        ItemStatusModRequest removeRequest = new ItemStatusModRequest(ItemAction.REMOVE_FROM_BUY_LIST, null, item.getItem());
         
         if (!worker.sendForm(removeRequest))
             Platform.runLater(() -> Alert.display(null, "Failed to send request."));

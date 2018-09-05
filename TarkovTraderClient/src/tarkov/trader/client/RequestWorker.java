@@ -335,7 +335,7 @@ public class RequestWorker implements Runnable
     private void processProfile(ProfileRequest profileRequest)
     {   
         final Profile matchingProfile = profileRequest.getReturnedProfile();
-        
+        System.out.println("Received: " + matchingProfile.getUsername());
         final boolean allowEdit = matchingProfile.getUsername().equals(TarkovTrader.username);   // Add fields to edit profile if this matches user's username
         
         String flag = null;

@@ -405,9 +405,11 @@ public class TarkovTrader extends Application {
         loadingPrompt.display();
         
         ProfileRequest profileRequest = new ProfileRequest(TarkovTrader.username);
-        System.out.println(profileRequest.getUsername() + TarkovTrader.username);
         
-        worker.sendForm(profileRequest);
+        if (!worker.sendForm(profileRequest))
+        {
+            Platform.runLater(() -> Alert.display(null, "Failed to request profile."));
+        }
     }
     
     
