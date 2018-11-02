@@ -71,12 +71,12 @@ public class RequestWorker implements Runnable
         try 
         {
             // Italia Server
-            //connection = new Socket("70.93.96.32", 6550);
-            //serverComm = new Socket("70.93.96.32", 6550);
+            connection = new Socket("70.93.96.32", 6550);
+            serverComm = new Socket("70.93.96.32", 6550);
             
             // Localhost
-            connection = new Socket("127.0.0.1", 6550);
-            serverComm = new Socket("127.0.0.1", 6550);            
+            //connection = new Socket("127.0.0.1", 6550);
+            //serverComm = new Socket("127.0.0.1", 6550);
             
             if ((connection != null) && (serverComm != null))
             {
