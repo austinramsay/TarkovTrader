@@ -1,0 +1,62 @@
+.root {
+    -fx-background-color: #383838;
+}
+
+.menu-item, .menu-bar, .context-menu {
+    -fx-background-color: #383838;
+}
+
+.menu:hover, .menu-item:hover {
+    -fx-background-color: #010101;
+}
+
+.label {
+    -fx-text-fill: #fefefe;
+}
+
+.button {
+    -fx-background-color: #1d1d1d;
+    -fx-font-weight: bold;
+    -fx-text-fill: #fefefe;
+    -fx-background-radius: 5;
+    -fx-font-size: 13;
+}
+
+.button:hover {
+    -fx-background-color: #010101;
+}
+
+.button:pressed {
+    -fx-text-fill:#383838;
+}
+
+.centralDisplayButton {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-content-display: top;
+    -fx-min-height: 200;
+    -fx-min-width: 200;
+    -fx-background-insets: 0,0,20,0;
+}
+
+.text-input {
+    -fx-background-color: #010101;
+    -fx-text-fill: #fefefe;
+}
+
+.usernameDisplay {
+    -fx-text-fill: #010101;
+    -fx-font-size: 19;
+    -fx-font-weight: 900;
+    -fx-underline: true;
+}
+
+.vbox {
+    -fx-background-color: #474747;
+    -fx-border-style: solid;
+}
+
+.hbox {
+    -fx-background-color: #474747;
+    -fx-border-style: solid;
+}

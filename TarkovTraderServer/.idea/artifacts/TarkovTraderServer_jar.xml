@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="TarkovTraderServer:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/TarkovTraderServer_jar</output-path>
+    <root id="archive" name="TarkovTraderServer.jar">
+      <element id="module-output" name="TarkovTraderServer" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/libraries/mysql-connector-java-8.0.12.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
